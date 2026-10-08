@@ -1,0 +1,231 @@
+import '../constants/fpv_frequencies.dart';
+import '../models/assigned_board.dart';
+import '../models/board_type.dart';
+import '../models/fpv_channel.dart';
+import 'imd_validator.dart';
+
+class FrequencyAllocationResult {
+  final bool isSuccess;
+  final List<AssignedBoard> boards;
+  final String? errorMessage;
+
+  const FrequencyAllocationResult.success(this.boards)
+    : isSuccess = true,
+      errorMessage = null;
+
+  const FrequencyAllocationResult.failure(this.errorMessage)
+    : isSuccess = false,
+      boards = const [];
+
+  static const String defaultErrorMessage =
+      'Неможливо підібрати чисті частоти для заданої кількості бортів. '
+      'Зменшіть кількість бортів або активуйте розширені діапазони.';
+}
+
+class FrequencyAllocator {
+  const FrequencyAllocator();
+
+  /// Вычисляет оптимальное распределение частот для заданного количества бортов.
+  FrequencyAllocationResult allocate({
+    required int numStandard,
+    required int numLowband,
+    required int numXBand,
+  }) {
+    final total = numStandard + numLowband + numXBand;
+    if (total <= 0) {
+      return const FrequencyAllocationResult.success([]);
+    }
+
+    // Физические лимиты: стандартные сетки максимум 6 каналов, весь комплекс максимум 12
+    if (total > 12 || numStandard > 6) {
+      return const FrequencyAllocationResult.failure(
+        FrequencyAllocationResult.defaultErrorMessage,
+      );
+    }
+
+    // Без одного из расширенных диапазонов физический лимит не превышает 10 каналов
+    if (numXBand == 0 && (numStandard + numLowband > 10)) {
+      return const FrequencyAllocationResult.failure(
+        FrequencyAllocationResult.defaultErrorMessage,
+      );
+    }
+    if (numLowband == 0 && (numStandard + numXBand > 10)) {
+      return const FrequencyAllocationResult.failure(
+        FrequencyAllocationResult.defaultErrorMessage,
+      );
+    }
+
+    // Составляем упорядоченный список слотов для назначения:
+    // Сначала стандартные борты (наиболее жесткие ограничения — только стандартные сетки),
+    // Затем Lowband, затем X-band.
+    final slots = <_SlotRequest>[];
+    int boardCounter = 1;
+
+    for (int i = 0; i < numStandard; i++) {
+      slots.add(
+        _SlotRequest(
+          boardNumber: boardCounter++,
+          boardType: BoardType.standard,
+          allowedCategories: const [BandCategory.standard],
+        ),
+      );
+    }
+    for (int i = 0; i < numLowband; i++) {
+      slots.add(
+        _SlotRequest(
+          boardNumber: boardCounter++,
+          boardType: BoardType.lowband,
+          allowedCategories: const [
+            BandCategory.lowband,
+            BandCategory.standard,
+          ],
+        ),
+      );
+    }
+    for (int i = 0; i < numXBand; i++) {
+      slots.add(
+        _SlotRequest(
+          boardNumber: boardCounter++,
+          boardType: BoardType.xBand,
+          allowedCategories: const [BandCategory.xBand, BandCategory.standard],
+        ),
+      );
+    }
+
+    // Подготавливаем списки кандидатов для каждого типа
+    final candidatesBySlot = slots.map((slot) {
+      return _getCandidatesForSlot(slot.boardType);
+    }).toList();
+
+    final chosenChannels = <FpvChannel>[];
+    final chosenFrequencies = <int>[];
+    final usedChannelCodes = <String>{};
+
+    final found = _backtrack(
+      slotIndex: 0,
+      slots: slots,
+      candidatesBySlot: candidatesBySlot,
+      chosenChannels: chosenChannels,
+      chosenFrequencies: chosenFrequencies,
+      usedChannelCodes: usedChannelCodes,
+      lastCandidateIndex: -1,
+    );
+
+    if (!found) {
+      return const FrequencyAllocationResult.failure(
+        FrequencyAllocationResult.defaultErrorMessage,
+      );
+    }
+
+    // Успешный результат
+    final result = <AssignedBoard>[];
+    for (int i = 0; i < slots.length; i++) {
+      result.add(
+        AssignedBoard(
+          boardNumber: slots[i].boardNumber,
+          boardType: slots[i].boardType,
+          channel: chosenChannels[i],
+        ),
+      );
+    }
+
+    return FrequencyAllocationResult.success(result);
+  }
+
+  /// Формирует приоритетный список каналов-кандидатов для слота
+  List<FpvChannel> _getCandidatesForSlot(BoardType type) {
+    switch (type) {
+      case BoardType.standard:
+        // Стандартным бортам доступны только классические сетки.
+        // Приоритет: Raceband (R), Fatshark (F), затем A, B, E
+        return FpvFrequencies.standardChannels;
+
+      case BoardType.lowband:
+        // Для Lowband сначала пробуем Lowband каналы, затем стандартные
+        return [
+          ...FpvFrequencies.lowbandChannels,
+          ...FpvFrequencies.standardChannels,
+        ];
+
+      case BoardType.xBand:
+        // Для X-band сначала пробуем X-band каналы, затем стандартные
+        return [
+          ...FpvFrequencies.xBandChannels,
+          ...FpvFrequencies.standardChannels,
+        ];
+    }
+  }
+
+  /// Поиск с возвратом (backtracking) с ранним отсечением и устранением симметрии
+  bool _backtrack({
+    required int slotIndex,
+    required List<_SlotRequest> slots,
+    required List<List<FpvChannel>> candidatesBySlot,
+    required List<FpvChannel> chosenChannels,
+    required List<int> chosenFrequencies,
+    required Set<String> usedChannelCodes,
+    required int lastCandidateIndex,
+  }) {
+    if (slotIndex == slots.length) {
+      return true; // Все борты успешно распределены!
+    }
+
+    final sameTypeAsPrev =
+        slotIndex > 0 &&
+        slots[slotIndex].boardType == slots[slotIndex - 1].boardType;
+    final startIndex = sameTypeAsPrev ? lastCandidateIndex + 1 : 0;
+    final candidates = candidatesBySlot[slotIndex];
+
+    for (int i = startIndex; i < candidates.length; i++) {
+      final candidate = candidates[i];
+
+      // Исключаем повторное использование одного и того же канала или частоты
+      if (usedChannelCodes.contains(candidate.code)) continue;
+      if (chosenFrequencies.contains(candidate.frequency)) continue;
+
+      // Проверка защитного интервала Δf >= 40 и IMD3
+      if (!ImdValidator.canAddFrequency(
+        chosenFrequencies,
+        candidate.frequency,
+      )) {
+        continue;
+      }
+
+      // Шаг вперед
+      chosenChannels.add(candidate);
+      chosenFrequencies.add(candidate.frequency);
+      usedChannelCodes.add(candidate.code);
+
+      if (_backtrack(
+        slotIndex: slotIndex + 1,
+        slots: slots,
+        candidatesBySlot: candidatesBySlot,
+        chosenChannels: chosenChannels,
+        chosenFrequencies: chosenFrequencies,
+        usedChannelCodes: usedChannelCodes,
+        lastCandidateIndex: i,
+      )) {
+        return true;
+      }
+
+      // Шаг назад (backtrack)
+      chosenChannels.removeLast();
+      chosenFrequencies.removeLast();
+      usedChannelCodes.remove(candidate.code);
+    }
+
+    return false;
+  }
+}
+
+class _SlotRequest {
+  final int boardNumber;
+  final BoardType boardType;
+  final List<BandCategory> allowedCategories;
+
+  const _SlotRequest({
+    required this.boardNumber,
+    required this.boardType,
+    required this.allowedCategories,
+  });
+}
