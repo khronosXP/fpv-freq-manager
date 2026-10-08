@@ -46,6 +46,6 @@ _flutter.loader.load({
     canvasKitBaseUrl: "canvaskit/",
   },
   serviceWorkerSettings: {
-    serviceWorkerVersion: "3862897605" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */,
+    serviceWorkerVersion: "183982411" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */,
   },
 });
