@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpv_freq_manager/core/math/frequency_allocator.dart';
 import 'package:fpv_freq_manager/core/math/imd_validator.dart';
+import 'package:fpv_freq_manager/core/constants/fpv_frequencies.dart';
 import 'package:fpv_freq_manager/core/models/board_type.dart';
 import 'package:fpv_freq_manager/core/models/fpv_channel.dart';
 
@@ -173,6 +174,24 @@ void main() {
         expect(res.isSuccess, equals(expectedSuccess));
         expect(sw.elapsedMilliseconds, lessThan(50));
       }
+    });
+
+    test('Allocates clean 9-drone grid (5 standard, 2 lowband, 2 x-band)', () {
+      final result = allocator.allocate(
+        numStandard: 5,
+        numLowband: 2,
+        numXBand: 2,
+      );
+      expect(result.isSuccess, isTrue);
+      expect(result.boards.length, equals(9));
+      final freqs = result.boards.map((b) => b.channel.frequency).toList();
+      expect(
+        ImdValidator.isValidSet(
+          freqs,
+          minDistance: ImdValidator.marginalImdDistance,
+        ),
+        isTrue,
+      );
     });
   });
 }

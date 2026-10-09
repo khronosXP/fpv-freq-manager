@@ -161,5 +161,21 @@ void main() {
         expect(ImdValidator.isValidSet(optGrid, minDistance: 15), isTrue);
       },
     );
+
+    test('Critic 9-drone proposed grid has fatal 0 MHz collisions', () {
+      // Proposed by critic:
+      // X1(4990), X6(5140), L1(5333), L4(5453), R1(5658), B1(5700), F2(5760), F5(5820), R7(5880)
+      final criticGrid9 = [4990, 5140, 5333, 5453, 5658, 5700, 5760, 5820, 5880];
+      final violations = ImdValidator.findViolations(criticGrid9, minDistance: 10);
+      expect(violations.isNotEmpty, isTrue);
+
+      // Demonstrates catastrophic 0 MHz hits:
+      // 2*5760 - 5700 = 5820 (diff = 0 MHz on F5!)
+      // 2*5820 - 5880 = 5760 (diff = 0 MHz on F2!)
+      // 2*5820 - 5760 = 5880 (diff = 0 MHz on R7!)
+      // 5700 + 5453 - 5333 = 5820 (diff = 0 MHz on F5!)
+      final zeroHits = violations.where((v) => v.contains('diff = 0MHz')).toList();
+      expect(zeroHits.length, greaterThanOrEqualTo(10));
+    });
   });
 }
