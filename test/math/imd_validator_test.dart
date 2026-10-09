@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpv_freq_manager/core/constants/fpv_frequencies.dart';
 import 'package:fpv_freq_manager/core/math/imd_validator.dart';
 
 void main() {
@@ -177,5 +178,23 @@ void main() {
       final zeroHits = violations.where((v) => v.contains('diff = 0MHz')).toList();
       expect(zeroHits.length, greaterThanOrEqualTo(10));
     });
+
+    test(
+      'Replacing R7(5880) with E8(5945) in [5645, 5695, 5765, 5825, 5945] creates exact 0 MHz Triple-Beat on A3(5825)',
+      () {
+        // 5645(E4) + 5945(E8) - 5765(A6) = 5825 (diff = 0 MHz on A3!)
+        final grid = [5645, 5695, 5765, 5825, 5945];
+        final violations = ImdValidator.findViolations(grid, minDistance: 10);
+        expect(violations.isNotEmpty, isTrue);
+
+        final zeroHit = violations.any(
+          (v) =>
+              v.contains('Triple-beat IMD3') &&
+              v.contains('diff = 0MHz') &&
+              v.contains('5825'),
+        );
+        expect(zeroHit, isTrue);
+      },
+    );
   });
 }
