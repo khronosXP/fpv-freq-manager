@@ -106,4 +106,40 @@ void main() {
     // Conflicts should be resolved!
     expect(find.text('СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)'), findsOneWidget);
   });
+
+  testWidgets(
+    'Auto mode calculation automatically syncs boards to manual inspector on switch',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pumpAndSettle();
+
+      // In auto mode, increment to 4 standard boards (initial is 2)
+      final incBtn = find.widgetWithIcon(IconButton, Icons.add).first;
+      await tester.tap(incBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(incBtn);
+      await tester.pumpAndSettle();
+
+      // Tap calculate
+      final calcBtn = find.textContaining('Розрахувати сітку');
+      await tester.tap(calcBtn);
+      await tester.pumpAndSettle();
+
+      // Now switch to 'Ручний інспектор'
+      await tester.tap(find.text('Ручний інспектор'));
+      await tester.pumpAndSettle();
+
+      // All 4 boards should be automatically synced to manual inspector!
+      expect(find.text('4 / 12 бортів'), findsOneWidget);
+      expect(find.text('Борт 1'), findsOneWidget);
+      expect(find.text('Борт 2'), findsOneWidget);
+      expect(find.text('Борт 3'), findsOneWidget);
+      expect(find.text('Борт 4'), findsOneWidget);
+      expect(find.text('З розрахунку (4)'), findsOneWidget);
+    },
+  );
 }

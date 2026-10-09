@@ -4,6 +4,7 @@ import '../../core/models/assigned_board.dart';
 import '../../core/models/board_type.dart';
 import '../../core/models/manual_drone_slot.dart';
 import '../../core/math/conflict_analyzer.dart';
+import '../providers/frequency_manager_provider.dart';
 import '../providers/manual_config_provider.dart';
 import '../widgets/manual/collision_detail_dialog.dart';
 import '../widgets/manual/collision_summary_banner.dart';
@@ -19,6 +20,7 @@ class ManualConfiguratorView extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final state = ref.watch(manualConfigProvider);
     final notifier = ref.read(manualConfigProvider.notifier);
+    final autoState = ref.watch(frequencyManagerProvider);
 
     final assignedBoards = state.slots
         .where((s) => s.isAssigned)
@@ -34,7 +36,7 @@ class ManualConfiguratorView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildToolbar(context, state, notifier, colorScheme, theme),
+        _buildToolbar(context, state, notifier, autoState, colorScheme, theme),
         if (state.lastStatusMessage != null)
           _buildStatusMessage(state.lastStatusMessage!, colorScheme, theme),
         CollisionSummaryBanner(
@@ -81,11 +83,18 @@ class ManualConfiguratorView extends ConsumerWidget {
     BuildContext context,
     ManualConfigState state,
     ManualConfigNotifier notifier,
+    FrequencyManagerState autoState,
     ColorScheme colorScheme,
     ThemeData theme,
   ) {
+    final hasAutoResult =
+        autoState.hasGenerated &&
+        autoState.result != null &&
+        autoState.result!.isSuccess &&
+        autoState.result!.boards.isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
@@ -94,40 +103,69 @@ class ManualConfiguratorView extends ConsumerWidget {
           color: colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
-      child: Row(
-        children: [
-          // Add drone popup button
-          _buildAddDroneButton(state, notifier, colorScheme, theme),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: notifier.resetToCleanPair,
-            style: OutlinedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Add drone popup button
+            _buildAddDroneButton(state, notifier, colorScheme, theme),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: notifier.resetToCleanPair,
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+              ),
+              child: const Text('Скинути'),
             ),
-            child: const Text('Скинути'),
-          ),
-          const Spacer(),
-          // Slot count badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+            if (hasAutoResult) ...[
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    notifier.importFromAllocation(autoState.result!.boards),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: colorScheme.primary,
+                  side: BorderSide(
+                    color: colorScheme.primary.withValues(alpha: 0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                ),
+                icon: const Icon(Icons.download, size: 14),
+                label: Text(
+                  'З розрахунку (${autoState.result!.boards.length})',
+                ),
+              ),
+            ],
+            const SizedBox(width: 12),
+            // Slot count badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Text(
+                '${state.slots.length} / ${ManualConfigState.maxTotalBoards} бортів',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
               ),
             ),
-            child: Text(
-              '${state.slots.length} / ${ManualConfigState.maxTotalBoards} бортів',
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

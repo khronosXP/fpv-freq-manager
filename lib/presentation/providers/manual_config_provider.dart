@@ -15,6 +15,7 @@ class ManualConfigState {
   final String? lastStatusMessage;
   final int? selectedSlotId;
   final bool isResolving;
+  final bool isUserCustomized;
 
   const ManualConfigState({
     required this.slots,
@@ -22,6 +23,7 @@ class ManualConfigState {
     this.lastStatusMessage,
     this.selectedSlotId,
     this.isResolving = false,
+    this.isUserCustomized = false,
   });
 
   bool get canAddSlot => slots.length < maxTotalBoards;
@@ -33,6 +35,7 @@ class ManualConfigState {
     String? Function()? lastStatusMessage,
     int? Function()? selectedSlotId,
     bool? isResolving,
+    bool? isUserCustomized,
   }) {
     return ManualConfigState(
       slots: slots ?? this.slots,
@@ -44,6 +47,7 @@ class ManualConfigState {
           ? selectedSlotId()
           : this.selectedSlotId,
       isResolving: isResolving ?? this.isResolving,
+      isUserCustomized: isUserCustomized ?? this.isUserCustomized,
     );
   }
 }
@@ -104,6 +108,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
       slots: updated,
       conflictReport: _analyzer.analyze(updated),
       lastStatusMessage: () => null,
+      isUserCustomized: true,
     );
   }
 
@@ -122,6 +127,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
       conflictReport: _analyzer.analyze(reindexed),
       lastStatusMessage: () => null,
       selectedSlotId: state.selectedSlotId == slotId ? () => null : null,
+      isUserCustomized: true,
     );
   }
 
@@ -137,6 +143,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
       slots: updated,
       conflictReport: _analyzer.analyze(updated),
       lastStatusMessage: () => null,
+      isUserCustomized: true,
     );
   }
 
@@ -151,6 +158,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
     state = state.copyWith(
       slots: updated,
       conflictReport: _analyzer.analyze(updated),
+      isUserCustomized: true,
     );
   }
 
@@ -173,6 +181,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
       slots: updated,
       conflictReport: _analyzer.analyze(updated),
       lastStatusMessage: () => null,
+      isUserCustomized: true,
     );
   }
 
@@ -212,7 +221,10 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
     }
   }
 
-  void importFromAllocation(List<AssignedBoard> boards) {
+  void importFromAllocation(
+    List<AssignedBoard> boards, {
+    bool markCustomized = true,
+  }) {
     if (boards.isEmpty) return;
 
     final imported = List.generate(
@@ -229,9 +241,20 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
     state = state.copyWith(
       slots: imported,
       conflictReport: _analyzer.analyze(imported),
+      isUserCustomized: markCustomized,
       lastStatusMessage: () =>
           'Імпортовано ${imported.length} бортів із авто-розрахунку',
     );
+  }
+
+  /// Автоматично підтягує розраховані борти, якщо користувач ще не змінював слоти вручну
+  bool syncWithAllocationIfUntouched(List<AssignedBoard> boards) {
+    if (boards.isEmpty) return false;
+    if (!state.isUserCustomized || state.slots.length <= 2) {
+      importFromAllocation(boards, markCustomized: false);
+      return true;
+    }
+    return false;
   }
 
   void resetToCleanPair() {
@@ -255,6 +278,7 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
     state = ManualConfigState(
       slots: initialSlots,
       conflictReport: _analyzer.analyze(initialSlots),
+      isUserCustomized: false,
     );
   }
 

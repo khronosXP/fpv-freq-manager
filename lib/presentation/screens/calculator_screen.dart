@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_mode_provider.dart';
+import '../providers/frequency_manager_provider.dart';
+import '../providers/manual_config_provider.dart';
 import '../views/auto_calculator_view.dart';
 import '../views/manual_configurator_view.dart';
 import '../widgets/calculator_footer.dart';
@@ -63,6 +65,7 @@ class CalculatorScreen extends ConsumerWidget {
                   const SizedBox(height: 14),
                   _buildModeSelector(
                     context,
+                    ref,
                     currentMode,
                     modeNotifier,
                     colorScheme,
@@ -86,6 +89,7 @@ class CalculatorScreen extends ConsumerWidget {
 
   Widget _buildModeSelector(
     BuildContext context,
+    WidgetRef ref,
     FpvManagerMode currentMode,
     AppModeNotifier notifier,
     ColorScheme colorScheme,
@@ -106,7 +110,19 @@ class CalculatorScreen extends ConsumerWidget {
       selected: {currentMode},
       onSelectionChanged: (selected) {
         if (selected.isNotEmpty) {
-          notifier.setMode(selected.first);
+          final newMode = selected.first;
+          if (newMode == FpvManagerMode.manual) {
+            final autoState = ref.read(frequencyManagerProvider);
+            if (autoState.hasGenerated &&
+                autoState.result != null &&
+                autoState.result!.isSuccess &&
+                autoState.result!.boards.isNotEmpty) {
+              ref
+                  .read(manualConfigProvider.notifier)
+                  .syncWithAllocationIfUntouched(autoState.result!.boards);
+            }
+          }
+          notifier.setMode(newMode);
         }
       },
       style: ButtonStyle(
