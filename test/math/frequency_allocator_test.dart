@@ -41,7 +41,7 @@ void main() {
       }
     });
 
-    test('Allocates clean channels for 5 standard boards (safe >= 12-15 MHz)', () {
+    test('Allocates clean channels for 5 standard boards (safe >= 15 MHz)', () {
       final result = allocator.allocate(
         numStandard: 5,
         numLowband: 0,
@@ -49,12 +49,8 @@ void main() {
       );
       expect(result.isSuccess, isTrue);
       expect(result.boards.length, equals(5));
-      for (final b in result.boards) {
-        // ignore: avoid_print
-        print('5-STD BOARD: ${b.boardNumber}: ${b.channel.code} (${b.channel.frequency} MHz)');
-      }
       final freqs = result.boards.map((b) => b.channel.frequency).toList();
-      expect(ImdValidator.isValidSet(freqs, minDistance: 12), isTrue);
+      expect(ImdValidator.isValidSet(freqs, minDistance: 15), isTrue);
     });
 
     test('Allocates mixed setup: 2 standard, 2 lowband, 1 x-band', () {
