@@ -115,16 +115,35 @@ void main() {
       expect(numbers, equals([1, 2, 3, 4]));
     });
 
+    test(
+      'Allocates clean channels for 6 standard boards (verified against Triple-Beat)',
+      () {
+        final result = allocator.allocate(
+          numStandard: 6,
+          numLowband: 0,
+          numXBand: 0,
+        );
+        expect(result.isSuccess, isTrue);
+        expect(result.boards.length, equals(6));
+
+        final freqs = result.boards.map((b) => b.channel.frequency).toList();
+        expect(ImdValidator.hasValidGuardBands(freqs), isTrue);
+        expect(ImdValidator.hasNoTwoToneCollisions(freqs), isTrue);
+        expect(ImdValidator.hasNoTripleBeatCollisions(freqs), isTrue);
+        expect(ImdValidator.isValidSet(freqs), isTrue);
+      },
+    );
+
     test('High-performance allocation completes in under 50ms', () {
       final sw = Stopwatch()..start();
       for (final (std, low, x, expectedSuccess) in [
         (2, 0, 0, true),
         (4, 0, 0, true),
         (6, 0, 0, true),
-        (6, 2, 0, true),
-        (6, 4, 2, true),
-        (4, 4, 4, true),
-        (2, 5, 5, true),
+        (6, 1, 0, true),
+        (4, 2, 2, true),
+        (6, 2, 0, false),
+        (4, 4, 4, false),
         (6, 6, 0, false),
       ]) {
         sw.reset();

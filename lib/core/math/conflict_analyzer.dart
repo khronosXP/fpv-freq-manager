@@ -40,15 +40,41 @@ class ImdCollision {
       '2×Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) - Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < 10 МГц)';
 }
 
+class TripleBeatCollision {
+  final ManualDroneSlot transmitter1;
+  final ManualDroneSlot transmitter2;
+  final ManualDroneSlot transmitter3;
+  final ManualDroneSlot victim;
+  final int imdFrequency;
+  final int distance;
+
+  const TripleBeatCollision({
+    required this.transmitter1,
+    required this.transmitter2,
+    required this.transmitter3,
+    required this.victim,
+    required this.imdFrequency,
+    required this.distance,
+  });
+
+  int get beatFrequency => imdFrequency;
+
+  @override
+  String toString() =>
+      'Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) + Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) - Борт ${transmitter3.boardNumber} (${transmitter3.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < 10 МГц)';
+}
+
 class ConflictReport {
   final List<DirectCollision> directCollisions;
   final List<ImdCollision> imdCollisions;
+  final List<TripleBeatCollision> tripleBeatCollisions;
   final Set<int> conflictedSlotIds;
   final Map<int, List<FpvChannel>> suggestionsBySlotId;
 
   const ConflictReport({
     required this.directCollisions,
     required this.imdCollisions,
+    this.tripleBeatCollisions = const [],
     required this.conflictedSlotIds,
     required this.suggestionsBySlotId,
   });
@@ -56,14 +82,19 @@ class ConflictReport {
   const ConflictReport.empty()
     : directCollisions = const [],
       imdCollisions = const [],
+      tripleBeatCollisions = const [],
       conflictedSlotIds = const {},
       suggestionsBySlotId = const {};
 
   bool get hasCollisions =>
-      directCollisions.isNotEmpty || imdCollisions.isNotEmpty;
+      directCollisions.isNotEmpty ||
+      imdCollisions.isNotEmpty ||
+      tripleBeatCollisions.isNotEmpty;
   bool get isClean => !hasCollisions;
   int get totalCollisionsCount =>
-      directCollisions.length + imdCollisions.length;
+      directCollisions.length +
+      imdCollisions.length +
+      tripleBeatCollisions.length;
 }
 
 class ConflictAnalyzer {
@@ -144,7 +175,62 @@ class ConflictAnalyzer {
       }
     }
 
-    // 3. Генерація рекомендацій заміни для незаблокованих конфліктних слотів
+    // 3. Тритонові інтермодуляційні колізії Triple-Beat (|f1 + f2 - f3 - f_victim| < 10 МГц)
+    final tripleBeat = <TripleBeatCollision>[];
+    if (assignedSlots.length >= 4) {
+      final n = assignedSlots.length;
+      for (int i = 0; i < n; i++) {
+        final t1 = assignedSlots[i];
+        final f1 = t1.channel!.frequency;
+
+        for (int j = i + 1; j < n; j++) {
+          final t2 = assignedSlots[j];
+          final f2 = t2.channel!.frequency;
+
+          for (int k = 0; k < n; k++) {
+            if (k == i || k == j) continue;
+            final t3 = assignedSlots[k];
+            final f3 = t3.channel!.frequency;
+            final beatFreq = f1 + f2 - f3;
+
+            for (int m = 0; m < n; m++) {
+              if (m == i || m == j || m == k) continue;
+              final vic = assignedSlots[m];
+              final fVic = vic.channel!.frequency;
+              final dist = (beatFreq - fVic).abs();
+
+              if (dist < ImdValidator.minImdDistance) {
+                final alreadyAdded = tripleBeat.any(
+                  (c) =>
+                      c.transmitter1.id == t1.id &&
+                      c.transmitter2.id == t2.id &&
+                      c.transmitter3.id == t3.id &&
+                      c.victim.id == vic.id,
+                );
+                if (!alreadyAdded) {
+                  tripleBeat.add(
+                    TripleBeatCollision(
+                      transmitter1: t1,
+                      transmitter2: t2,
+                      transmitter3: t3,
+                      victim: vic,
+                      imdFrequency: beatFreq,
+                      distance: dist,
+                    ),
+                  );
+                  conflictedIds.add(t1.id);
+                  conflictedIds.add(t2.id);
+                  conflictedIds.add(t3.id);
+                  conflictedIds.add(vic.id);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Генерація рекомендацій заміни для незаблокованих конфліктних слотів
     final suggestions = <int, List<FpvChannel>>{};
     for (final slot in assignedSlots) {
       if (!slot.isLocked && conflictedIds.contains(slot.id)) {
@@ -155,6 +241,7 @@ class ConflictAnalyzer {
     return ConflictReport(
       directCollisions: direct,
       imdCollisions: imd,
+      tripleBeatCollisions: tripleBeat,
       conflictedSlotIds: conflictedIds,
       suggestionsBySlotId: suggestions,
     );
@@ -193,20 +280,15 @@ class ConflictAnalyzer {
     return validAlternatives.take(4).toList();
   }
 
-  List<FpvChannel> _getCandidatePool(BoardType type) {
-    switch (type) {
-      case BoardType.standard:
-        return FpvFrequencies.standardChannels;
-      case BoardType.lowband:
-        return [
-          ...FpvFrequencies.lowbandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
-      case BoardType.xBand:
-        return [
-          ...FpvFrequencies.xBandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
-    }
-  }
+  List<FpvChannel> _getCandidatePool(BoardType type) => switch (type) {
+    BoardType.standard => FpvFrequencies.standardChannels,
+    BoardType.lowband => [
+      ...FpvFrequencies.lowbandChannels,
+      ...FpvFrequencies.standardChannels,
+    ],
+    BoardType.xBand => [
+      ...FpvFrequencies.xBandChannels,
+      ...FpvFrequencies.standardChannels,
+    ],
+  };
 }

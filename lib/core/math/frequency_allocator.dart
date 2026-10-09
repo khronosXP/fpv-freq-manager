@@ -36,22 +36,23 @@ class FrequencyAllocator {
       return const FrequencyAllocationResult.success([]);
     }
 
-    // Физические лимиты: стандартные сетки максимум 6 каналов, весь комплекс максимум 12
-    if (total > 12 || numStandard > 6) {
+    // Фізичні ліміти радіофізики:
+    // 1. Стандартні сітки 5.8 ГГц — максимум 6 бортів.
+    // 2. Повний комплекс з урахуванням тритонового IMD3 (Triple-Beat >= 10 МГц)
+    //    теоретично вміщує максимум 9 одночасних бортів.
+    if (total > 9 || numStandard > 6) {
       return const FrequencyAllocationResult.failure(
         FrequencyAllocationResult.defaultErrorMessage,
       );
     }
 
-    // Без одного из расширенных диапазонов физический лимит не превышает 10 каналов
-    if (numXBand == 0 && (numStandard + numLowband > 10)) {
+    // 6 стандартних бортів займають весь спектр 5.8 ГГц (E4, R2, A6, A4, A1, E8).
+    // Комбінація 6 стандартних бортів з >= 2 розширеними бортами математично
+    // утворює неминучий інтермодуляційний конфлікт 3-го порядку (Triple-Beat).
+    if (numStandard == 6 && (numLowband >= 2 || numXBand >= 2 || total > 7)) {
       return const FrequencyAllocationResult.failure(
-        FrequencyAllocationResult.defaultErrorMessage,
-      );
-    }
-    if (numLowband == 0 && (numStandard + numXBand > 10)) {
-      return const FrequencyAllocationResult.failure(
-        FrequencyAllocationResult.defaultErrorMessage,
+        'Неможливо підібрати чисті частоти для 6 стандартних бортів та розширених діапазонів '
+        'без інтермодуляції 3-го порядку (Triple-Beat). Переведіть 1-2 стандартні борти на Lowband або X-Band.',
       );
     }
 
@@ -132,29 +133,54 @@ class FrequencyAllocator {
     return FrequencyAllocationResult.success(result);
   }
 
-  /// Формирует приоритетный список каналов-кандидатов для слота
-  List<FpvChannel> _getCandidatesForSlot(BoardType type) {
-    switch (type) {
-      case BoardType.standard:
-        // Стандартным бортам доступны только классические сетки.
-        // Приоритет: Raceband (R), Fatshark (F), затем A, B, E
-        return FpvFrequencies.standardChannels;
-
-      case BoardType.lowband:
-        // Для Lowband сначала пробуем Lowband каналы, затем стандартные
-        return [
-          ...FpvFrequencies.lowbandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
-
-      case BoardType.xBand:
-        // Для X-band сначала пробуем X-band каналы, затем стандартные
-        return [
-          ...FpvFrequencies.xBandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
+  static final List<FpvChannel> _sortedStandardChannels = () {
+    final seenFreqs = <int>{};
+    final unique = <FpvChannel>[];
+    for (final ch in FpvFrequencies.standardChannels) {
+      if (seenFreqs.add(ch.frequency)) {
+        unique.add(ch);
+      }
     }
-  }
+    unique.sort((a, b) => a.frequency.compareTo(b.frequency));
+    return List<FpvChannel>.unmodifiable(unique);
+  }();
+
+  static final List<FpvChannel> _sortedLowbandChannels = () {
+    final seenFreqs = <int>{};
+    final unique = <FpvChannel>[];
+    for (final ch in [
+      ...FpvFrequencies.lowbandChannels,
+      ...FpvFrequencies.standardChannels,
+    ]) {
+      if (seenFreqs.add(ch.frequency)) {
+        unique.add(ch);
+      }
+    }
+    unique.sort((a, b) => a.frequency.compareTo(b.frequency));
+    return List<FpvChannel>.unmodifiable(unique);
+  }();
+
+  static final List<FpvChannel> _sortedXBandChannels = () {
+    final seenFreqs = <int>{};
+    final unique = <FpvChannel>[];
+    for (final ch in [
+      ...FpvFrequencies.xBandChannels,
+      ...FpvFrequencies.standardChannels,
+    ]) {
+      if (seenFreqs.add(ch.frequency)) {
+        unique.add(ch);
+      }
+    }
+    unique.sort((a, b) => a.frequency.compareTo(b.frequency));
+    return List<FpvChannel>.unmodifiable(unique);
+  }();
+
+  /// Формирует отсортированный по частоте список кандидатов для слота
+  List<FpvChannel> _getCandidatesForSlot(BoardType type) => switch (type) {
+    BoardType.standard => _sortedStandardChannels,
+    BoardType.lowband => _sortedLowbandChannels,
+    BoardType.xBand => _sortedXBandChannels,
+  };
 
   /// Поиск с возвратом (backtracking) с ранним отсечением и устранением симметрии
   bool _backtrack({

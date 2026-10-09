@@ -47,5 +47,45 @@ void main() {
       // 2*5800 - 5658 = 5942. A frequency at 5940 has diff 2 MHz (< 10 MHz)
       expect(ImdValidator.canAddFrequency(current, 5940), isFalse);
     });
+
+    test(
+      'Triple-Beat IMD3: detects 3-tone collision in user 6-drone grid (diff = 0 MHz)',
+      () {
+        // User grid:
+        // E3: 5665, R3: 5732, A5: 5785, A3: 5825, F8: 5880, E8: 5945
+        // 5665 + 5945 - 5785 = 5825 (diff = 0 MHz on A3!)
+        final userGrid = [5665, 5732, 5785, 5825, 5880, 5945];
+
+        // Guard bands are all >= 40 MHz
+        expect(ImdValidator.hasValidGuardBands(userGrid), isTrue);
+
+        // Two-tone check passes
+        expect(ImdValidator.hasNoTwoToneCollisions(userGrid), isTrue);
+
+        // Triple-beat check FAILS!
+        expect(ImdValidator.hasNoTripleBeatCollisions(userGrid), isFalse);
+        expect(ImdValidator.hasNoImd3Collisions(userGrid), isFalse);
+        expect(ImdValidator.isValidSet(userGrid), isFalse);
+
+        final violations = ImdValidator.findViolations(userGrid);
+        expect(violations.any((v) => v.contains('Triple-beat IMD3')), isTrue);
+      },
+    );
+
+    test('canAddFrequency rejects candidate causing Triple-Beat', () {
+      final current = [5665, 5785, 5825]; // E3, A5, A3
+      // Candidate E8: 5945 causes 5785 + 5825 - 5665 = 5945 (0 MHz diff!)
+      expect(ImdValidator.canAddFrequency(current, 5945), isFalse);
+    });
+
+    test('Clean 6-drone standard grid is 100% valid under full IMD3', () {
+      // Set 1: E4(5645), R2(5695), A6(5765), A4(5805), A1(5865), E8(5945)
+      final cleanGrid = [5645, 5695, 5765, 5805, 5865, 5945];
+      expect(ImdValidator.hasValidGuardBands(cleanGrid), isTrue);
+      expect(ImdValidator.hasNoTwoToneCollisions(cleanGrid), isTrue);
+      expect(ImdValidator.hasNoTripleBeatCollisions(cleanGrid), isTrue);
+      expect(ImdValidator.isValidSet(cleanGrid), isTrue);
+      expect(ImdValidator.findViolations(cleanGrid), isEmpty);
+    });
   });
 }

@@ -78,5 +78,72 @@ void main() {
       expect(suggestions, isNotNull);
       expect(suggestions!.isNotEmpty, isTrue);
     });
+
+    test(
+      'Detects Triple-Beat IMD3 collisions in 6-drone grid (diff = 0 MHz)',
+      () {
+        // User grid:
+        // Борт 1: E3 (5665)
+        // Борт 2: R3 (5732)
+        // Борт 3: A5 (5785)
+        // Борт 4: A3 (5825)
+        // Борт 5: F8 (5880)
+        // Борт 6: E8 (5945)
+        final slots = [
+          ManualDroneSlot(
+            id: 1,
+            boardNumber: 1,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandE[2], // E3: 5665
+          ),
+          ManualDroneSlot(
+            id: 2,
+            boardNumber: 2,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandR[2], // R3: 5732
+          ),
+          ManualDroneSlot(
+            id: 3,
+            boardNumber: 3,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandA[4], // A5: 5785
+          ),
+          ManualDroneSlot(
+            id: 4,
+            boardNumber: 4,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandA[2], // A3: 5825
+          ),
+          ManualDroneSlot(
+            id: 5,
+            boardNumber: 5,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandF[7], // F8: 5880
+          ),
+          ManualDroneSlot(
+            id: 6,
+            boardNumber: 6,
+            boardType: BoardType.standard,
+            channel: FpvFrequencies.bandE[7], // E8: 5945
+          ),
+        ];
+
+        final report = analyzer.analyze(slots);
+        expect(report.hasCollisions, isTrue);
+        expect(report.directCollisions, isEmpty); // Guard bands are >= 40 MHz
+        expect(report.imdCollisions, isEmpty); // Two-tone check passes
+        expect(report.tripleBeatCollisions.isNotEmpty, isTrue);
+
+        // Contains the exact 0 MHz hit: E3(5665) + E8(5945) - A5(5785) = 5825 (A3!)
+        final zeroHit = report.tripleBeatCollisions.any(
+          (tb) =>
+              tb.distance == 0 &&
+              tb.victim.id == 4 && // Slot 4 (A3)
+              tb.beatFrequency == 5825,
+        );
+        expect(zeroHit, isTrue);
+        expect(report.conflictedSlotIds, containsAll([1, 3, 4, 6]));
+      },
+    );
   });
 }

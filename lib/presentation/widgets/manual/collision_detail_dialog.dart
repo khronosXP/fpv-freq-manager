@@ -60,12 +60,24 @@ class CollisionDetailDialog extends StatelessWidget {
               if (report.imdCollisions.isNotEmpty) ...[
                 _buildSectionHeader(
                   context,
-                  'Інтермодуляція IMD3 (|2f1 - f2 - f3| < 10 МГц)',
+                  'Двотонова інтермодуляція (|2f1 - f2 - f3| < 10 МГц)',
                   report.imdCollisions.length,
                 ),
                 const SizedBox(height: 8),
                 ...report.imdCollisions.map(
                   (c) => _buildImdItem(c, theme, colorScheme),
+                ),
+              ],
+              if (report.tripleBeatCollisions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _buildSectionHeader(
+                  context,
+                  'Тритонова інтермодуляція Triple-Beat (+6 dB)',
+                  report.tripleBeatCollisions.length,
+                ),
+                const SizedBox(height: 8),
+                ...report.tripleBeatCollisions.map(
+                  (c) => _buildTripleBeatItem(c, theme, colorScheme),
                 ),
               ],
             ],
@@ -180,6 +192,43 @@ class CollisionDetailDialog extends StatelessWidget {
         children: [
           Text(
             '2×Б${c.transmitter1.boardNumber} (${c.transmitter1.channel?.code}) - Б${c.transmitter2.boardNumber} (${c.transmitter2.channel?.code}) = ${c.imdFrequency} МГц',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Вражає Борт ${c.victim.boardNumber} (${c.victim.channel?.code}): зазор ${c.distance} МГц (потрібно ≥ 10 МГц)',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.error,
+              fontFamily: 'monospace',
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTripleBeatItem(
+    TripleBeatCollision c,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Б${c.transmitter1.boardNumber} (${c.transmitter1.channel?.code}) + Б${c.transmitter2.boardNumber} (${c.transmitter2.channel?.code}) - Б${c.transmitter3.boardNumber} (${c.transmitter3.channel?.code}) = ${c.imdFrequency} МГц',
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.bold,
               fontFamily: 'monospace',

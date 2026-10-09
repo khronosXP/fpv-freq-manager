@@ -75,6 +75,15 @@ class CollisionSummaryBanner extends StatelessWidget {
   Widget _buildCollisionBanner(ColorScheme colorScheme, ThemeData theme) {
     final directCount = report.directCollisions.length;
     final imdCount = report.imdCollisions.length;
+    final tbCount = report.tripleBeatCollisions.length;
+
+    final String summaryText;
+    if (tbCount > 0) {
+      summaryText =
+          'КОЛІЗІЇ: $directCount прямих • $imdCount 2-тон • $tbCount 3-тон';
+    } else {
+      summaryText = 'КОЛІЗІЇ: $directCount прямих • $imdCount IMD3';
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -103,7 +112,7 @@ class CollisionSummaryBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'КОЛІЗІЇ: $directCount прямих • $imdCount IMD3',
+                      summaryText,
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.6,
