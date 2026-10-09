@@ -24,4 +24,6 @@ enum BoardType {
         return 'X-B';
     }
   }
+
+  String get label => displayName;
 }
