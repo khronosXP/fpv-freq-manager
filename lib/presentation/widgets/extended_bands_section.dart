@@ -79,8 +79,9 @@ class ExtendedBandsSection extends StatelessWidget {
                 canIncrement: state.canIncrementLowband,
                 canDecrement: state.canDecrementLowband,
                 monospaceSubtitle: true,
-                limitMessage: state.lowbandCount >= 8
-                    ? 'Максимум 8 каналів L1–L8'
+                limitMessage:
+                    state.lowbandCount >= FrequencyManagerState.maxLowbandBoards
+                    ? 'Фізичний ліміт: макс. 4 без завад'
                     : null,
                 onIncrement: notifier.incrementLowband,
                 onDecrement: notifier.decrementLowband,
@@ -93,8 +94,9 @@ class ExtendedBandsSection extends StatelessWidget {
                 canIncrement: state.canIncrementXBand,
                 canDecrement: state.canDecrementXBand,
                 monospaceSubtitle: true,
-                limitMessage: state.xBandCount >= 8
-                    ? 'Максимум 8 каналів X1–X8'
+                limitMessage:
+                    state.xBandCount >= FrequencyManagerState.maxXBandBoards
+                    ? 'Фізичний ліміт: макс. 3 без завад'
                     : null,
                 onIncrement: notifier.incrementXBand,
                 onDecrement: notifier.decrementXBand,

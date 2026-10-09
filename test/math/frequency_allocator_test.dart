@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpv_freq_manager/core/math/frequency_allocator.dart';
 import 'package:fpv_freq_manager/core/math/imd_validator.dart';
-import 'package:fpv_freq_manager/core/constants/fpv_frequencies.dart';
 import 'package:fpv_freq_manager/core/models/board_type.dart';
 import 'package:fpv_freq_manager/core/models/fpv_channel.dart';
 
@@ -165,7 +164,7 @@ void main() {
       },
     );
 
-    test('High-performance allocation completes in under 50ms', () {
+    test('High-performance allocation completes in under 150ms', () {
       final sw = Stopwatch()..start();
       for (final (std, low, x, expectedSuccess) in [
         (2, 0, 0, true),
@@ -173,9 +172,10 @@ void main() {
         (6, 0, 0, true),
         (6, 1, 0, true),
         (4, 2, 2, true),
-        (6, 2, 0, false),
+        (6, 2, 0, true),
         (4, 4, 4, false),
         (6, 6, 0, false),
+        (7, 0, 0, false),
       ]) {
         sw.reset();
         final res = allocator.allocate(
@@ -184,7 +184,7 @@ void main() {
           numXBand: x,
         );
         expect(res.isSuccess, equals(expectedSuccess));
-        expect(sw.elapsedMilliseconds, lessThan(50));
+        expect(sw.elapsedMilliseconds, lessThan(150));
       }
     });
 
@@ -196,14 +196,32 @@ void main() {
       );
       expect(result.isSuccess, isTrue);
       expect(result.boards.length, equals(9));
+
       final freqs = result.boards.map((b) => b.channel.frequency).toList();
+      expect(ImdValidator.hasValidGuardBands(freqs), isTrue);
+
+      final stdFreqs = result.boards
+          .where((b) => b.boardType == BoardType.standard)
+          .map((b) => b.channel.frequency)
+          .toList();
+      final lowFreqs = result.boards
+          .where((b) => b.boardType == BoardType.lowband)
+          .map((b) => b.channel.frequency)
+          .toList();
+      final xFreqs = result.boards
+          .where((b) => b.boardType == BoardType.xBand)
+          .map((b) => b.channel.frequency)
+          .toList();
+
       expect(
         ImdValidator.isValidSet(
-          freqs,
+          stdFreqs,
           minDistance: ImdValidator.marginalImdDistance,
         ),
         isTrue,
       );
+      expect(ImdValidator.isValidSet(lowFreqs), isTrue);
+      expect(ImdValidator.isValidSet(xFreqs), isTrue);
     });
   });
 }

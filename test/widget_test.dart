@@ -119,16 +119,25 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // Lowband starts at 0. Tap 6 times -> 6 lowband (sum = 12)
-    for (int i = 0; i < 6; i++) {
+    // Lowband starts at 0. Tap 4 times -> 4 lowband
+    for (int i = 0; i < 4; i++) {
       await tester.tap(addLowband);
       await tester.pumpAndSettle();
     }
 
+    // X-band starts at 0. Tap 2 times -> 2 x-band (sum = 6 + 4 + 2 = 12)
+    final addXBand = addIcons.at(2);
+    await tester.ensureVisible(addXBand);
+    for (int i = 0; i < 2; i++) {
+      await tester.tap(addXBand);
+      await tester.pumpAndSettle();
+    }
+
     // Global limit notice appears exactly ONCE
-    expect(
-      find.textContaining('Досягнуто загальний ліміт: 12 бортів'),
-      findsOneWidget,
+    final limitNotice = find.textContaining(
+      'Досягнуто загальний ліміт: 12 бортів',
     );
+    await tester.ensureVisible(limitNotice);
+    expect(limitNotice, findsOneWidget);
   });
 }
