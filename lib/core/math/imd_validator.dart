@@ -1,9 +1,5 @@
 class TwoToneImdViolation {
-  final int f1;
-  final int f2;
-  final int f3;
-  final int imdFrequency;
-  final int distance;
+  final int f1, f2, f3, imdFrequency, distance;
 
   const TwoToneImdViolation({
     required this.f1,
@@ -21,12 +17,7 @@ class TwoToneImdViolation {
 typedef ImdViolation = TwoToneImdViolation;
 
 class TripleBeatViolation {
-  final int f1;
-  final int f2;
-  final int distance;
-  final int f3;
-  final int victim;
-  final int imdFrequency;
+  final int f1, f2, f3, victim, imdFrequency, distance;
 
   const TripleBeatViolation({
     required this.f1,
@@ -43,9 +34,7 @@ class TripleBeatViolation {
 }
 
 class GuardBandViolation {
-  final int f1;
-  final int f2;
-  final int delta;
+  final int f1, f2, delta;
 
   const GuardBandViolation({
     required this.f1,
@@ -61,13 +50,17 @@ class GuardBandViolation {
 class ImdValidator {
   ImdValidator._();
 
-  /// Минимальный защитный интервал между любыми двумя каналами (МГц).
+  /// Мінімальний захисний інтервал між будь-якими двома каналами (МГц).
   static const int minGuardBand = 40;
 
-  /// Минимальный допуск безопасности от интермодуляции 3-го порядка (МГц).
-  static const int minImdDistance = 10;
+  /// Стандартний безпечний допуск від IMD3 (МГц).
+  /// Гарантує вихід паразитної гармоніки за межі смуги пропускання фільтра ПЧ (IF SAW Filter ~17-20 МГц).
+  static const int minImdDistance = 12;
 
-  /// Проверяет, соблюдается ли защитный интервал Δf >= 40 МГц для всех пар.
+  /// Граничний фізичний допуск IMD3 для екстремально щільних сіток на 6 стандартних бортів (МГц).
+  static const int marginalImdDistance = 10;
+
+  /// Перевіряє, чи дотримується захисний інтервал Δf >= 40 МГц для всіх пар.
   static bool hasValidGuardBands(List<int> frequencies) {
     for (int i = 0; i < frequencies.length; i++) {
       for (int j = i + 1; j < frequencies.length; j++) {
@@ -79,8 +72,11 @@ class ImdValidator {
     return true;
   }
 
-  /// Двотонова перевірка IMD3 (|2*f1 - f2 - f3| >= 10 МГц).
-  static bool hasNoTwoToneCollisions(List<int> frequencies) {
+  /// Двотонова перевірка IMD3 (|2*f1 - f2 - f3| >= minDistance МГц).
+  static bool hasNoTwoToneCollisions(
+    List<int> frequencies, {
+    int minDistance = minImdDistance,
+  }) {
     final n = frequencies.length;
     if (n < 3) return true;
 
@@ -94,7 +90,7 @@ class ImdValidator {
         for (int k = 0; k < n; k++) {
           if (k == i || k == j) continue;
           final f3 = frequencies[k];
-          if ((imd - f3).abs() < minImdDistance) {
+          if ((imd - f3).abs() < minDistance) {
             return false;
           }
         }
@@ -103,8 +99,11 @@ class ImdValidator {
     return true;
   }
 
-  /// Трисигнальна перевірка IMD3 Triple-Beat (|(fi + fj) - (fk + fm)| >= 10 МГц).
-  static bool hasNoTripleBeatCollisions(List<int> frequencies) {
+  /// Трисигнальна перевірка IMD3 Triple-Beat (|(fi + fj) - (fk + fm)| >= minDistance МГц).
+  static bool hasNoTripleBeatCollisions(
+    List<int> frequencies, {
+    int minDistance = minImdDistance,
+  }) {
     final n = frequencies.length;
     if (n < 4) return true;
 
@@ -122,7 +121,7 @@ class ImdValidator {
             final fm = frequencies[m];
             final sum2 = fk + fm;
 
-            if ((sum1 - sum2).abs() < minImdDistance) {
+            if ((sum1 - sum2).abs() < minDistance) {
               return false;
             }
           }
@@ -133,18 +132,29 @@ class ImdValidator {
   }
 
   /// Повна перевірка IMD3 (двотонові продукти 2*f1 - f2 та тритонові fi + fj - fk).
-  static bool hasNoImd3Collisions(List<int> frequencies) {
-    return hasNoTwoToneCollisions(frequencies) &&
-        hasNoTripleBeatCollisions(frequencies);
+  static bool hasNoImd3Collisions(
+    List<int> frequencies, {
+    int minDistance = minImdDistance,
+  }) {
+    return hasNoTwoToneCollisions(frequencies, minDistance: minDistance) &&
+        hasNoTripleBeatCollisions(frequencies, minDistance: minDistance);
   }
 
   /// Повна валідація набору частот (захисний інтервал + двотоновий та тритоновий IMD3).
-  static bool isValidSet(List<int> frequencies) {
-    return hasValidGuardBands(frequencies) && hasNoImd3Collisions(frequencies);
+  static bool isValidSet(
+    List<int> frequencies, {
+    int minDistance = minImdDistance,
+  }) {
+    return hasValidGuardBands(frequencies) &&
+        hasNoImd3Collisions(frequencies, minDistance: minDistance);
   }
 
   /// Інкрементальна перевірка: чи можна безпечно додати [candidate] до вже валідного [current].
-  static bool canAddFrequency(List<int> current, int candidate) {
+  static bool canAddFrequency(
+    List<int> current,
+    int candidate, {
+    int minDistance = minImdDistance,
+  }) {
     // 1. Захисний інтервал зі всіма поточними частотами
     for (final f in current) {
       if ((candidate - f).abs() < minGuardBand) {
@@ -165,19 +175,19 @@ class ImdValidator {
 
         // candidate як приймач f3: 2*f1 - f2 ~ candidate
         final imd = 2 * f1 - f2;
-        if ((imd - candidate).abs() < minImdDistance) {
+        if ((imd - candidate).abs() < minDistance) {
           return false;
         }
 
         // candidate як f1: 2*candidate - f1 ~ f2
         final imdAsF1 = 2 * candidate - f1;
-        if ((imdAsF1 - f2).abs() < minImdDistance) {
+        if ((imdAsF1 - f2).abs() < minDistance) {
           return false;
         }
 
         // candidate як f2: 2*f1 - candidate ~ f2
         final imdAsF2 = 2 * f1 - candidate;
-        if ((imdAsF2 - f2).abs() < minImdDistance) {
+        if ((imdAsF2 - f2).abs() < minDistance) {
           return false;
         }
       }
@@ -189,7 +199,7 @@ class ImdValidator {
 
     // 3. Тритонова інтермодуляція Triple-Beat (zero-allocation incremental pruning)
     // Охоплює всі ролі candidate (приймач або будь-який з передавачів):
-    // |(a + b - c) - candidate| < minImdDistance
+    // |(a + b - c) - candidate| < minDistance
     final curLen = current.length;
     for (int i = 0; i < curLen; i++) {
       final a = current[i];
@@ -199,7 +209,7 @@ class ImdValidator {
           if (k == i || k == j) continue;
           final c = current[k];
           final beat = a + b - c;
-          if ((beat - candidate).abs() < minImdDistance) {
+          if ((beat - candidate).abs() < minDistance) {
             return false;
           }
         }
@@ -210,7 +220,10 @@ class ImdValidator {
   }
 
   /// Повертає перелік усіх порушень для діагностики.
-  static List<String> findViolations(List<int> frequencies) {
+  static List<String> findViolations(
+    List<int> frequencies, {
+    int minDistance = minImdDistance,
+  }) {
     final violations = <String>[];
 
     // 1. Guard band
@@ -239,9 +252,9 @@ class ImdValidator {
           if (k == i || k == j) continue;
           final f3 = frequencies[k];
           final diff = (imd - f3).abs();
-          if (diff < minImdDistance) {
+          if (diff < minDistance) {
             violations.add(
-              'Two-tone IMD3: 2*$f1 - $f2 = $imd clashes with $f3 (diff = ${diff}MHz < ${minImdDistance}MHz)',
+              'Two-tone IMD3: 2*$f1 - $f2 = $imd clashes with $f3 (diff = ${diff}MHz < ${minDistance}MHz)',
             );
           }
         }
@@ -262,9 +275,9 @@ class ImdValidator {
             if (m == i || m == j || m == k) continue;
             final fVictim = frequencies[m];
             final diff = (beat - fVictim).abs();
-            if (diff < minImdDistance) {
+            if (diff < minDistance) {
               violations.add(
-                'Triple-beat IMD3: $f1 + $f2 - $f3 = $beat clashes with $fVictim (diff = ${diff}MHz < ${minImdDistance}MHz)',
+                'Triple-beat IMD3: $f1 + $f2 - $f3 = $beat clashes with $fVictim (diff = ${diff}MHz < ${minDistance}MHz)',
               );
             }
           }

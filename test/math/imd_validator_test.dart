@@ -59,13 +59,37 @@ void main() {
         // Guard bands are all >= 40 MHz
         expect(ImdValidator.hasValidGuardBands(userGrid), isTrue);
 
-        // Two-tone check passes
-        expect(ImdValidator.hasNoTwoToneCollisions(userGrid), isTrue);
+        // Under 10 MHz marginal tolerance, two-tone check passes:
+        expect(
+          ImdValidator.hasNoTwoToneCollisions(
+            userGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
 
-        // Triple-beat check FAILS!
-        expect(ImdValidator.hasNoTripleBeatCollisions(userGrid), isFalse);
-        expect(ImdValidator.hasNoImd3Collisions(userGrid), isFalse);
-        expect(ImdValidator.isValidSet(userGrid), isFalse);
+        // Triple-beat check FAILS even under marginal tolerance (diff = 0 MHz)!
+        expect(
+          ImdValidator.hasNoTripleBeatCollisions(
+            userGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isFalse,
+        );
+        expect(
+          ImdValidator.hasNoImd3Collisions(
+            userGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isFalse,
+        );
+        expect(
+          ImdValidator.isValidSet(
+            userGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isFalse,
+        );
 
         final violations = ImdValidator.findViolations(userGrid);
         expect(violations.any((v) => v.contains('Triple-beat IMD3')), isTrue);
@@ -78,14 +102,64 @@ void main() {
       expect(ImdValidator.canAddFrequency(current, 5945), isFalse);
     });
 
-    test('Clean 6-drone standard grid is 100% valid under full IMD3', () {
-      // Set 1: E4(5645), R2(5695), A6(5765), A4(5805), A1(5865), E8(5945)
-      final cleanGrid = [5645, 5695, 5765, 5805, 5865, 5945];
-      expect(ImdValidator.hasValidGuardBands(cleanGrid), isTrue);
-      expect(ImdValidator.hasNoTwoToneCollisions(cleanGrid), isTrue);
-      expect(ImdValidator.hasNoTripleBeatCollisions(cleanGrid), isTrue);
-      expect(ImdValidator.isValidSet(cleanGrid), isTrue);
-      expect(ImdValidator.findViolations(cleanGrid), isEmpty);
-    });
+    test(
+      'Clean 6-drone standard grid achieves 10 MHz physical ceiling under marginal tolerance',
+      () {
+        // Set 1: E4(5645), R2(5695), A6(5765), A4(5805), A1(5865), E8(5945)
+        final cleanGrid = [5645, 5695, 5765, 5805, 5865, 5945];
+        expect(ImdValidator.hasValidGuardBands(cleanGrid), isTrue);
+        expect(
+          ImdValidator.hasNoTwoToneCollisions(
+            cleanGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
+        expect(
+          ImdValidator.hasNoTripleBeatCollisions(
+            cleanGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
+        expect(
+          ImdValidator.isValidSet(
+            cleanGrid,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'Rejects borderline 10 MHz grid [5645, 5685, 5740, 5805] under safe 12 MHz threshold',
+      () {
+        // Borderline grid criticized for sitting on the edge of the IF filter:
+        // 2*5740 - 5685 = 5795 (diff 10 MHz to 5805, unsafe for IF SAW filter)
+        final borderlineGrid = [5645, 5685, 5740, 5805];
+        expect(ImdValidator.hasValidGuardBands(borderlineGrid), isTrue);
+        expect(ImdValidator.hasNoTwoToneCollisions(borderlineGrid), isFalse);
+        expect(ImdValidator.isValidSet(borderlineGrid), isFalse);
+
+        final violations = ImdValidator.findViolations(borderlineGrid);
+        expect(violations.any((v) => v.contains('Two-tone IMD3')), isTrue);
+      },
+    );
+
+    test(
+      'Clean 4-drone grids [5645, 5685, 5740, 5880 / 5820] pass strict 12 MHz & 15 MHz safety',
+      () {
+        // Critic proposed grid with R7: 5880:
+        final criticGrid = [5645, 5685, 5740, 5880];
+        expect(ImdValidator.isValidSet(criticGrid), isTrue);
+        expect(ImdValidator.isValidSet(criticGrid, minDistance: 15), isTrue);
+
+        // Optimal generator grid with F5: 5820:
+        final optGrid = [5645, 5685, 5740, 5820];
+        expect(ImdValidator.isValidSet(optGrid), isTrue);
+        expect(ImdValidator.isValidSet(optGrid, minDistance: 15), isTrue);
+      },
+    );
   });
 }

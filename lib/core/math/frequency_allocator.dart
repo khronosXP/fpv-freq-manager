@@ -102,15 +102,28 @@ class FrequencyAllocator {
     final chosenFrequencies = <int>[];
     final usedChannelCodes = <String>{};
 
-    final found = _backtrack(
-      slotIndex: 0,
-      slots: slots,
-      candidatesBySlot: candidatesBySlot,
-      chosenChannels: chosenChannels,
-      chosenFrequencies: chosenFrequencies,
-      usedChannelCodes: usedChannelCodes,
-      lastCandidateIndex: -1,
-    );
+    final tiers = (total <= 6 && numStandard < 6)
+        ? const [15, 12]
+        : (numStandard == 6 ? const [10] : const [12, 10]);
+
+    bool found = false;
+    for (final minImd in tiers) {
+      chosenChannels.clear();
+      chosenFrequencies.clear();
+      usedChannelCodes.clear();
+
+      found = _backtrack(
+        slotIndex: 0,
+        slots: slots,
+        candidatesBySlot: candidatesBySlot,
+        chosenChannels: chosenChannels,
+        chosenFrequencies: chosenFrequencies,
+        usedChannelCodes: usedChannelCodes,
+        lastCandidateIndex: -1,
+        minDistance: minImd,
+      );
+      if (found) break;
+    }
 
     if (!found) {
       return const FrequencyAllocationResult.failure(
@@ -191,6 +204,7 @@ class FrequencyAllocator {
     required List<int> chosenFrequencies,
     required Set<String> usedChannelCodes,
     required int lastCandidateIndex,
+    required int minDistance,
   }) {
     if (slotIndex == slots.length) {
       return true; // Все борты успешно распределены!
@@ -213,6 +227,7 @@ class FrequencyAllocator {
       if (!ImdValidator.canAddFrequency(
         chosenFrequencies,
         candidate.frequency,
+        minDistance: minDistance,
       )) {
         continue;
       }
@@ -230,6 +245,7 @@ class FrequencyAllocator {
         chosenFrequencies: chosenFrequencies,
         usedChannelCodes: usedChannelCodes,
         lastCandidateIndex: i,
+        minDistance: minDistance,
       )) {
         return true;
       }

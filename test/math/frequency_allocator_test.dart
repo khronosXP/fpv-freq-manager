@@ -128,9 +128,27 @@ void main() {
 
         final freqs = result.boards.map((b) => b.channel.frequency).toList();
         expect(ImdValidator.hasValidGuardBands(freqs), isTrue);
-        expect(ImdValidator.hasNoTwoToneCollisions(freqs), isTrue);
-        expect(ImdValidator.hasNoTripleBeatCollisions(freqs), isTrue);
-        expect(ImdValidator.isValidSet(freqs), isTrue);
+        expect(
+          ImdValidator.hasNoTwoToneCollisions(
+            freqs,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
+        expect(
+          ImdValidator.hasNoTripleBeatCollisions(
+            freqs,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
+        expect(
+          ImdValidator.isValidSet(
+            freqs,
+            minDistance: ImdValidator.marginalImdDistance,
+          ),
+          isTrue,
+        );
       },
     );
 

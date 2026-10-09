@@ -60,7 +60,7 @@ class CollisionDetailDialog extends StatelessWidget {
               if (report.imdCollisions.isNotEmpty) ...[
                 _buildSectionHeader(
                   context,
-                  'Двотонова інтермодуляція (|2f1 - f2 - f3| < 10 МГц)',
+                  'Двотонова інтермодуляція (|2f1 - f2 - f3| < 12 МГц)',
                   report.imdCollisions.length,
                 ),
                 const SizedBox(height: 8),
@@ -199,7 +199,7 @@ class CollisionDetailDialog extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Вражає Борт ${c.victim.boardNumber} (${c.victim.channel?.code}): зазор ${c.distance} МГц (потрібно ≥ 10 МГц)',
+            'Вражає Борт ${c.victim.boardNumber} (${c.victim.channel?.code}): зазор ${c.distance} МГц (потрібно ≥ 12 МГц)',
             style: theme.textTheme.labelSmall?.copyWith(
               color: colorScheme.error,
               fontFamily: 'monospace',
@@ -236,7 +236,7 @@ class CollisionDetailDialog extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Вражає Борт ${c.victim.boardNumber} (${c.victim.channel?.code}): зазор ${c.distance} МГц (потрібно ≥ 10 МГц)',
+            'Вражає Борт ${c.victim.boardNumber} (${c.victim.channel?.code}): зазор ${c.distance} МГц (потрібно ≥ 12 МГц)',
             style: theme.textTheme.labelSmall?.copyWith(
               color: colorScheme.error,
               fontFamily: 'monospace',

@@ -57,7 +57,7 @@ class CollisionSummaryBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Δf ≥ 40 MHz • IMD3 ≥ 10 MHz • Завад не виявлено',
+                  'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • Завад не виявлено',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'monospace',
                     fontSize: 11,
