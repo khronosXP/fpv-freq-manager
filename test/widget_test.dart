@@ -43,6 +43,12 @@ void main() {
       expect(find.text('Борт 2'), findsWidgets);
       expect(find.text('Борт 3'), findsWidgets);
 
+      // Verify Radio Spectrum button and tap it to scroll to chart
+      final spectrumBtn = find.text('Радіоспектр');
+      expect(spectrumBtn, findsOneWidget);
+      await tester.tap(spectrumBtn);
+      await tester.pumpAndSettle();
+
       // Tap copy button and verify accentuated SnackBar
       final copyBtn = find.text('Копіювати');
       await tester.ensureVisible(copyBtn);

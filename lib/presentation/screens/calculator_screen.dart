@@ -12,11 +12,29 @@ import '../widgets/manual/collision_summary_banner.dart';
 import '../widgets/quadcopter_logo.dart';
 import '../widgets/rf_spectrum_chart.dart';
 
-class CalculatorScreen extends ConsumerWidget {
+class CalculatorScreen extends ConsumerStatefulWidget {
   const CalculatorScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CalculatorScreen> createState() => _CalculatorScreenState();
+}
+
+class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
+  final _spectrumKey = GlobalKey();
+
+  void _scrollToSpectrum() {
+    final targetContext = _spectrumKey.currentContext;
+    if (targetContext != null) {
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final state = ref.watch(fleetProvider);
@@ -151,13 +169,14 @@ class CalculatorScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // 4. Єдиний перелік бортів флоту (ручний вибір частот, замки 🔒, копіювання)
-                  const FleetGrid(),
+                  // 4. Єдиний перелік бортів флоту (ручний вибір частот, замки 🔒, копіювання, перехід до спектра)
+                  FleetGrid(onShowSpectrum: _scrollToSpectrum),
                   const SizedBox(height: 20),
 
                   // 5. Графік радіочастотного спектра (останній блок перед футером)
                   if (state.assignedBoards.isNotEmpty) ...[
                     RfSpectrumChart(
+                      key: _spectrumKey,
                       boards: state.assignedBoards,
                       selectedBoardNumber: state.selectedSlotId,
                       onSelectBoard: notifier.selectSlot,

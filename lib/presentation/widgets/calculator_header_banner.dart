@@ -30,27 +30,12 @@ class CalculatorHeaderBanner extends StatelessWidget {
           QuadcopterLogo(size: 32, color: colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Розрахунок сітки частот без завад та інтермодуляції',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • RHCP',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.primary.withValues(alpha: 0.9),
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Розрахунок сітки частот без завад та інтермодуляції',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
         ],

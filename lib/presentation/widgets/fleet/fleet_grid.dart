@@ -7,7 +7,9 @@ import '../manual/manual_drone_slot_card.dart';
 import '../result_clipboard_helper.dart';
 
 class FleetGrid extends ConsumerWidget {
-  const FleetGrid({super.key});
+  final VoidCallback? onShowSpectrum;
+
+  const FleetGrid({super.key, this.onShowSpectrum});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,11 +23,15 @@ class FleetGrid extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Заголовок єдиного переліку бортів з дією швидкого копіювання
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Заголовок єдиного переліку бортів з діями спектра та швидкого копіювання
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.table_chart, size: 20, color: colorScheme.primary),
                 const SizedBox(width: 8),
@@ -40,20 +46,40 @@ class FleetGrid extends ConsumerWidget {
               ],
             ),
             if (hasAssigned)
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Копіювати'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(110, 44),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (onShowSpectrum != null)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.graphic_eq, size: 18),
+                      label: const Text('Радіоспектр'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(110, 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                      onPressed: onShowSpectrum,
+                    ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Копіювати'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(100, 40),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    onPressed: () => ResultClipboardHelper.copyToClipboard(
+                      context,
+                      state.assignedBoards,
+                    ),
                   ),
-                ),
-                onPressed: () => ResultClipboardHelper.copyToClipboard(
-                  context,
-                  state.assignedBoards,
-                ),
+                ],
               ),
           ],
         ),

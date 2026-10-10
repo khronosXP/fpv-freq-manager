@@ -40,33 +40,25 @@ class CollisionSummaryBanner extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.verified, color: colorScheme.tertiary, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                    fontFamily: 'monospace',
-                    color: colorScheme.tertiary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • Завад не виявлено',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+          Text(
+            'СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+              fontFamily: 'monospace',
+              color: colorScheme.tertiary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • Завад не виявлено',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontFamily: 'monospace',
+              fontSize: 11,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
