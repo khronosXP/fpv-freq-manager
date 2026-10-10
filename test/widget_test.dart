@@ -55,7 +55,7 @@ void main() {
     },
   );
 
-  testWidgets('Standard counter caps at 6 boards and displays limit message', (
+  testWidgets('Standard counter caps at 5 boards and displays limit message', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -64,20 +64,20 @@ void main() {
 
     final addIcon = find.byIcon(Icons.add).first;
 
-    // Tap 4 times to go from 2 to 6
-    for (int i = 0; i < 4; i++) {
+    // Tap 3 times to go from 2 to 5
+    for (int i = 0; i < 3; i++) {
       await tester.tap(addIcon);
       await tester.pumpAndSettle();
     }
 
-    expect(find.text('6'), findsOneWidget);
-    expect(find.textContaining('Ліміт 5.8 GHz: макс. 6'), findsOneWidget);
+    expect(find.text('5'), findsOneWidget);
+    expect(find.textContaining('Ліміт 5.8 GHz: макс. 5'), findsOneWidget);
 
-    // Try tapping 5th time - should stay at 6
+    // Try tapping 4th time - should stay at 5
     await tester.tap(addIcon);
     await tester.pumpAndSettle();
 
-    expect(find.text('6'), findsOneWidget);
+    expect(find.text('5'), findsOneWidget);
   });
 
   testWidgets('Toggle extended bands shows Lowband and X-band counters', (
@@ -114,8 +114,8 @@ void main() {
     final addStandard = addIcons.at(0);
     final addLowband = addIcons.at(1);
 
-    // Standard starts at 2. Tap 4 times -> 6 standard
-    for (int i = 0; i < 4; i++) {
+    // Standard starts at 2. Tap 3 times -> 5 standard
+    for (int i = 0; i < 3; i++) {
       await tester.tap(addStandard);
       await tester.pumpAndSettle();
     }
@@ -126,10 +126,10 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // X-band starts at 0. Tap 2 times -> 2 x-band (sum = 6 + 4 + 2 = 12)
+    // X-band starts at 0. Tap 3 times -> 3 x-band (sum = 5 + 4 + 3 = 12)
     final addXBand = addIcons.at(2);
     await tester.ensureVisible(addXBand);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 3; i++) {
       await tester.tap(addXBand);
       await tester.pumpAndSettle();
     }

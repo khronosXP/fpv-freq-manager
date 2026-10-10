@@ -3,7 +3,7 @@ import '../../core/math/frequency_allocator.dart';
 
 class FrequencyManagerState {
   static const int maxTotalBoards = 12;
-  static const int maxStandardBoards = 6;
+  static const int maxStandardBoards = 5;
   static const int maxLowbandBoards = 4;
   static const int maxXBandBoards = 3;
 

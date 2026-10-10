@@ -6,7 +6,7 @@ import '../../core/models/fleet_drone_slot.dart';
 /// Стан єдиного реактивного полотна флоту (Unified Fleet Canvas).
 class FleetState {
   static const int maxTotalBoards = 12;
-  static const int maxStandardBoards = 6;
+  static const int maxStandardBoards = 5;
   static const int maxLowbandBoards = 4;
   static const int maxXBandBoards = 3;
 

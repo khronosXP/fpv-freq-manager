@@ -27,7 +27,7 @@ class FleetCountersSection extends ConsumerWidget {
           canDecrement: state.canDecrementStandard,
           monospaceSubtitle: true,
           limitMessage: state.isStandardAtLimit
-              ? 'Ліміт 5.8 GHz: макс. 6 без завад'
+              ? 'Ліміт 5.8 GHz: макс. 5 без завад'
               : null,
           onIncrement: notifier.incrementStandard,
           onDecrement: notifier.decrementStandard,
