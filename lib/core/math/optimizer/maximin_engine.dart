@@ -1,33 +1,10 @@
 import '../../models/fpv_channel.dart';
 import '../imd_validator.dart';
 import '../models/allocation_score.dart';
+import '../models/band_allocation_result.dart';
 import 'diff_map.dart';
 
-/// Результат оптимізації смуги частот.
-class BandAllocationResult {
-  final List<FpvChannel> channels;
-  final AllocationScore score;
-  final bool isSuccess;
-  final String? errorMessage;
-
-  const BandAllocationResult({
-    required this.channels,
-    required this.score,
-    required this.isSuccess,
-    this.errorMessage,
-  });
-
-  const BandAllocationResult.failure(String message)
-    : channels = const [],
-      score = const AllocationScore(
-        imdMargin: 0,
-        minSpacing: 0,
-        totalSpread: 0,
-        totalScore: -1e9,
-      ),
-      isSuccess = false,
-      errorMessage = message;
-}
+export '../models/band_allocation_result.dart';
 
 /// Рушій оптимізації частот за критерієм Maximin із гілково-межовим відсіканням (Branch & Bound).
 class MaximinEngine {
@@ -98,6 +75,7 @@ class MaximinEngine {
   BandAllocationResult optimize({
     required List<FpvChannel> availableChannels,
     required int count,
+    List<FpvChannel> lockedChannels = const [],
   }) {
     if (count <= 0) {
       return const BandAllocationResult(
@@ -112,58 +90,107 @@ class MaximinEngine {
       );
     }
 
-    // Забезпечуємо унікальність за частотою та сортування
-    final uniqueMap = <int, FpvChannel>{};
-    for (final ch in availableChannels) {
-      uniqueMap.putIfAbsent(ch.frequency, () => ch);
+    // 1. Валідація зафіксованих каналів (🔒)
+    final lockedFreqs = lockedChannels.map((c) => c.frequency).toList()..sort();
+    for (int i = 0; i < lockedFreqs.length; i++) {
+      for (int j = i + 1; j < lockedFreqs.length; j++) {
+        if ((lockedFreqs[i] - lockedFreqs[j]).abs() < minSpacing) {
+          return const BandAllocationResult.failure(
+            'Зафіксовані канали (🔒) конфліктують між собою (Δf < 40 МГц).',
+          );
+        }
+      }
     }
-    final sortedChannels = uniqueMap.values.toList()
-      ..sort((a, b) => a.frequency.compareTo(b.frequency));
-
-    if (sortedChannels.length < count) {
-      return BandAllocationResult.failure(
-        'Недостатньо фізичних каналів у пулі ($count потрібно, ${sortedChannels.length} доступно).',
+    if (lockedFreqs.length >= 3 &&
+        calculateIntraBandImd3Margin(lockedFreqs) < minImdFloor) {
+      return const BandAllocationResult.failure(
+        'Зафіксовані канали (🔒) мають інтермодуляційний конфлікт IMD3.',
       );
     }
-
-    // 1-2 борти не мають інтермодуляції: просто максимізуємо рознос (Near-Far)
-    if (count == 1) {
-      final best = sortedChannels.first;
+    if (lockedChannels.length > count) {
+      return BandAllocationResult.failure(
+        'Кількість зафіксованих каналів (${lockedChannels.length}) перевищує ліміт ($count).',
+      );
+    }
+    if (lockedChannels.length == count) {
+      final margin = calculateIntraBandImd3Margin(lockedFreqs);
+      int minSp = 999;
+      for (int i = 0; i < lockedFreqs.length - 1; i++) {
+        final sp = lockedFreqs[i + 1] - lockedFreqs[i];
+        if (sp < minSp) minSp = sp;
+      }
+      final spread = lockedFreqs.isNotEmpty
+          ? lockedFreqs.last - lockedFreqs.first
+          : 0;
       return BandAllocationResult(
-        channels: [best],
-        score: const AllocationScore(
-          imdMargin: 999,
-          minSpacing: 999,
-          totalSpread: 0,
-          totalScore: 5000,
+        channels: List<FpvChannel>.from(lockedChannels)
+          ..sort((a, b) => a.frequency.compareTo(b.frequency)),
+        score: AllocationScore.calculate(
+          imdMargin: margin,
+          minSpacing: minSp,
+          totalSpread: spread,
         ),
         isSuccess: true,
       );
     }
 
-    if (count == 2) {
-      // Обираємо крайні канали з розносом >= minSpacing
-      for (int i = 0; i < sortedChannels.length; i++) {
-        for (int j = sortedChannels.length - 1; j > i; j--) {
-          final c1 = sortedChannels[i];
-          final c2 = sortedChannels[j];
-          final spacing = c2.frequency - c1.frequency;
-          if (spacing >= minSpacing) {
-            return BandAllocationResult(
-              channels: [c1, c2],
-              score: AllocationScore.calculate(
-                imdMargin: 999,
-                minSpacing: spacing,
-                totalSpread: spacing,
-              ),
-              isSuccess: true,
-            );
+    final freeCount = count - lockedChannels.length;
+
+    // 2. Фільтрація доступного пулу (вилучаємо зафіксовані)
+    final uniqueMap = <int, FpvChannel>{};
+    final lockedFreqSet = lockedFreqs.toSet();
+    for (final ch in availableChannels) {
+      if (!lockedFreqSet.contains(ch.frequency)) {
+        uniqueMap.putIfAbsent(ch.frequency, () => ch);
+      }
+    }
+    final sortedChannels = uniqueMap.values.toList()
+      ..sort((a, b) => a.frequency.compareTo(b.frequency));
+
+    if (sortedChannels.length < freeCount) {
+      return BandAllocationResult.failure(
+        'Недостатньо фізичних каналів у пулі ($freeCount потрібно, ${sortedChannels.length} доступно).',
+      );
+    }
+
+    // Швидкі оптимізації для 1-2 бортів БЕЗ блокувань
+    if (lockedChannels.isEmpty) {
+      if (count == 1) {
+        return BandAllocationResult(
+          channels: [sortedChannels.first],
+          score: const AllocationScore(
+            imdMargin: 999,
+            minSpacing: 999,
+            totalSpread: 0,
+            totalScore: 5000,
+          ),
+          isSuccess: true,
+        );
+      }
+
+      if (count == 2) {
+        for (int i = 0; i < sortedChannels.length; i++) {
+          for (int j = sortedChannels.length - 1; j > i; j--) {
+            final c1 = sortedChannels[i];
+            final c2 = sortedChannels[j];
+            final spacing = c2.frequency - c1.frequency;
+            if (spacing >= minSpacing) {
+              return BandAllocationResult(
+                channels: [c1, c2],
+                score: AllocationScore.calculate(
+                  imdMargin: 999,
+                  minSpacing: spacing,
+                  totalSpread: spacing,
+                ),
+                isSuccess: true,
+              );
+            }
           }
         }
+        return const BandAllocationResult.failure(
+          'Неможливо рознести 2 борти з інтервалом Δf ≥ 40 МГц.',
+        );
       }
-      return const BandAllocationResult.failure(
-        'Неможливо рознести 2 борти з інтервалом Δf ≥ 40 МГц.',
-      );
     }
 
     List<FpvChannel>? bestCombo;
@@ -174,17 +201,21 @@ class MaximinEngine {
       required List<FpvChannel> current,
       required List<int> currentFreqs,
     }) {
-      if (current.length == count) {
-        final imdMargin = calculateIntraBandImd3Margin(currentFreqs);
+      if (current.length == freeCount) {
+        final allChannels = [...lockedChannels, ...current]
+          ..sort((a, b) => a.frequency.compareTo(b.frequency));
+        final allFreqs = allChannels.map((c) => c.frequency).toList();
+
+        final imdMargin = calculateIntraBandImd3Margin(allFreqs);
         if (imdMargin < minImdFloor) return;
 
         int minSp = 999;
-        for (int i = 0; i < currentFreqs.length - 1; i++) {
-          final sp = currentFreqs[i + 1] - currentFreqs[i];
+        for (int i = 0; i < allFreqs.length - 1; i++) {
+          final sp = allFreqs[i + 1] - allFreqs[i];
           if (sp < minSp) minSp = sp;
         }
 
-        final spread = currentFreqs.last - currentFreqs.first;
+        final spread = allFreqs.last - allFreqs.first;
         final score = AllocationScore.calculate(
           imdMargin: imdMargin,
           minSpacing: minSp,
@@ -193,31 +224,44 @@ class MaximinEngine {
 
         if (bestScore == null || score.compareTo(bestScore!) > 0) {
           bestScore = score;
-          bestCombo = List<FpvChannel>.from(current);
+          bestCombo = allChannels;
         }
         return;
       }
 
-      final needed = count - current.length;
+      final needed = freeCount - current.length;
       final maxStart = sortedChannels.length - needed;
 
       for (int i = startIndex; i <= maxStart; i++) {
         final cand = sortedChannels[i];
 
-        // 1. Монотонний захисний інтервал Δf >= minSpacing
+        // 1. Монотонний інтервал Δf >= minSpacing між вільними
         if (current.isNotEmpty &&
             cand.frequency - current.last.frequency < minSpacing) {
           continue;
         }
 
-        // 2. Раннє відсікання симетричного 0 МГц резонансу
-        if (!DiffMap.canAddWithoutCollision(currentFreqs, cand.frequency)) {
+        // 2. Захисний інтервал з кожним зафіксованим каналом
+        bool clashesWithLocked = false;
+        for (final lf in lockedFreqs) {
+          if ((cand.frequency - lf).abs() < minSpacing) {
+            clashesWithLocked = true;
+            break;
+          }
+        }
+        if (clashesWithLocked) continue;
+
+        // Повний комбінований набір для перевірки
+        final combinedFreqs = [...lockedFreqs, ...currentFreqs];
+
+        // 3. Раннє відсікання симетричного 0 МГц резонансу
+        if (!DiffMap.canAddWithoutCollision(combinedFreqs, cand.frequency)) {
           continue;
         }
 
-        // 3. Раннє відсікання гілок, що порушують мінімальний IMD-поріг
+        // 4. Раннє відсікання гілок за порогом IMD
         if (!ImdValidator.canAddFrequency(
-          currentFreqs,
+          combinedFreqs,
           cand.frequency,
           minDistance: minImdFloor.toInt(),
         )) {

@@ -38,9 +38,9 @@ void main() {
       expect(find.byType(RfSpectrumChart), findsOneWidget);
       expect(find.text('Скрол ↔'), findsOneWidget);
       expect(find.byType(ResultCheatSheet), findsOneWidget);
-      expect(find.text('Борт 1'), findsOneWidget);
-      expect(find.text('Борт 2'), findsOneWidget);
-      expect(find.text('Борт 3'), findsOneWidget);
+      expect(find.text('Борт 1'), findsWidgets);
+      expect(find.text('Борт 2'), findsWidgets);
+      expect(find.text('Борт 3'), findsWidgets);
 
       // Tap copy button and verify accentuated SnackBar
       final copyBtn = find.text('Копіювати');

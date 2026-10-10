@@ -2,6 +2,7 @@ import '../constants/fpv_frequencies.dart';
 import '../models/assigned_board.dart';
 import '../models/board_type.dart';
 import '../models/fpv_channel.dart';
+import '../models/manual_drone_slot.dart';
 import 'optimizer/maximin_engine.dart';
 
 class FrequencyAllocationResult {
@@ -38,106 +39,171 @@ class FrequencyAllocator {
     required int numLowband,
     required int numXBand,
   }) {
-    final total = numStandard + numLowband + numXBand;
-    if (total <= 0) {
+    final slots = <ManualDroneSlot>[];
+    int id = 1;
+    for (int i = 0; i < numStandard; i++) {
+      slots.add(
+        ManualDroneSlot(
+          id: id,
+          boardNumber: id++,
+          boardType: BoardType.standard,
+        ),
+      );
+    }
+    for (int i = 0; i < numLowband; i++) {
+      slots.add(
+        ManualDroneSlot(
+          id: id,
+          boardNumber: id++,
+          boardType: BoardType.lowband,
+        ),
+      );
+    }
+    for (int i = 0; i < numXBand; i++) {
+      slots.add(
+        ManualDroneSlot(id: id, boardNumber: id++, boardType: BoardType.xBand),
+      );
+    }
+    return allocateFleetSlots(currentSlots: slots);
+  }
+
+  /// Обчислює оптимальний розподіл частот для списку слотів із урахуванням зафіксованих каналів (🔒).
+  FrequencyAllocationResult allocateFleetSlots({
+    required List<ManualDroneSlot> currentSlots,
+  }) {
+    if (currentSlots.isEmpty) {
       return const FrequencyAllocationResult.success([]);
     }
 
-    // 1. Перевірка фізичних меж спектру
+    final stdSlots = currentSlots
+        .where((s) => s.boardType == BoardType.standard)
+        .toList();
+    final lowSlots = currentSlots
+        .where((s) => s.boardType == BoardType.lowband)
+        .toList();
+    final xSlots = currentSlots
+        .where((s) => s.boardType == BoardType.xBand)
+        .toList();
+
+    final stdCount = stdSlots.length;
+    final lowCount = lowSlots.length;
+    final xCount = xSlots.length;
+    final total = stdCount + lowCount + xCount;
+
     if (total > maxTotalCapacity ||
-        numStandard > maxStandardCapacity ||
-        numLowband > maxLowbandCapacity ||
-        numXBand > maxXBandCapacity) {
+        stdCount > maxStandardCapacity ||
+        lowCount > maxLowbandCapacity ||
+        xCount > maxXBandCapacity) {
       return const FrequencyAllocationResult.failure(
         FrequencyAllocationResult.defaultErrorMessage,
       );
     }
 
-    // 2. Суворі пули каналів (ізоляція без fallback)
-    final stdPool = FpvFrequencies.standardChannels;
+    final stdLocked = stdSlots
+        .where((s) => s.isLocked && s.channel != null)
+        .map((s) => s.channel!)
+        .toList();
+    final lowLocked = lowSlots
+        .where((s) => s.isLocked && s.channel != null)
+        .map((s) => s.channel!)
+        .toList();
+    final xLocked = xSlots
+        .where((s) => s.isLocked && s.channel != null)
+        .map((s) => s.channel!)
+        .toList();
+
+    final stdPool = List<FpvChannel>.from(FpvFrequencies.standardChannels);
     final lowPool = List<FpvChannel>.from(FpvFrequencies.lowbandChannels);
     final xPool = FpvFrequencies.xBandChannels;
 
-    // 3. Запобігання міжканальному накладанню на стику Lowband та Standard:
-    // L8 (5613 МГц) та E4 (5645 МГц) мають різницю 32 МГц (< 40 МГц).
-    // Якщо одночасно запитано Lowband та Standard, виключаємо L8 з пулу,
-    // гарантуючи рознос на стику ≥ 72 МГц (L7 5573 до E4 5645).
-    if (numStandard > 0 && numLowband > 0) {
+    // Гранична фільтрація стику Lowband та Standard
+    final hasLockedL8 = lowLocked.any((ch) => ch.frequency == 5613);
+    if (hasLockedL8) {
+      stdPool.removeWhere((ch) => ch.frequency < 5653);
+    } else if (stdCount > 0 && lowCount > 0) {
       lowPool.removeWhere((ch) => ch.frequency == 5613);
     }
 
-    // 4. Оптимізація кожного діапазону незалежним Maximin-рушієм
     final stdEngine = MaximinEngine(
       minSpacing: 40,
-      minImdFloor: numStandard == 6 ? 10.0 : 12.0,
+      minImdFloor: stdCount == 6 ? 10.0 : 12.0,
     );
     const lowEngine = MaximinEngine(minSpacing: 40, minImdFloor: 10.0);
     const xEngine = MaximinEngine(minSpacing: 40, minImdFloor: 10.0);
 
-    // Оптимізація Standard 5.8 GHz
     final stdResult = stdEngine.optimize(
       availableChannels: stdPool,
-      count: numStandard,
+      count: stdCount,
+      lockedChannels: stdLocked,
     );
-    if (numStandard > 0 && !stdResult.isSuccess) {
+    if (stdCount > 0 && !stdResult.isSuccess) {
       return FrequencyAllocationResult.failure(
         stdResult.errorMessage ?? FrequencyAllocationResult.defaultErrorMessage,
       );
     }
 
-    // Оптимізація Lowband
     final lowResult = lowEngine.optimize(
       availableChannels: lowPool,
-      count: numLowband,
+      count: lowCount,
+      lockedChannels: lowLocked,
     );
-    if (numLowband > 0 && !lowResult.isSuccess) {
+    if (lowCount > 0 && !lowResult.isSuccess) {
       return FrequencyAllocationResult.failure(
         lowResult.errorMessage ?? FrequencyAllocationResult.defaultErrorMessage,
       );
     }
 
-    // Оптимізація X-band
-    final xResult = xEngine.optimize(availableChannels: xPool, count: numXBand);
-    if (numXBand > 0 && !xResult.isSuccess) {
+    final xResult = xEngine.optimize(
+      availableChannels: xPool,
+      count: xCount,
+      lockedChannels: xLocked,
+    );
+    if (xCount > 0 && !xResult.isSuccess) {
       return FrequencyAllocationResult.failure(
         xResult.errorMessage ?? FrequencyAllocationResult.defaultErrorMessage,
       );
     }
 
-    // 5. Формування підсумкового комплексу бортів із наскрізною нумерацією 1..N
-    final boards = <AssignedBoard>[];
-    int counter = 1;
+    // Розподіляємо обчислені канали по слотах
+    final stdFreeChannels = stdResult.channels
+        .where((ch) => !stdLocked.any((l) => l.frequency == ch.frequency))
+        .toList();
+    final lowFreeChannels = lowResult.channels
+        .where((ch) => !lowLocked.any((l) => l.frequency == ch.frequency))
+        .toList();
+    final xFreeChannels = xResult.channels
+        .where((ch) => !xLocked.any((l) => l.frequency == ch.frequency))
+        .toList();
 
-    for (final ch in stdResult.channels) {
-      boards.add(
+    int stdFreeIdx = 0;
+    int lowFreeIdx = 0;
+    int xFreeIdx = 0;
+
+    final updatedBoards = <AssignedBoard>[];
+    for (int i = 0; i < currentSlots.length; i++) {
+      final slot = currentSlots[i];
+      FpvChannel assignedCh;
+      if (slot.isLocked && slot.channel != null) {
+        assignedCh = slot.channel!;
+      } else {
+        switch (slot.boardType) {
+          case BoardType.standard:
+            assignedCh = stdFreeChannels[stdFreeIdx++];
+          case BoardType.lowband:
+            assignedCh = lowFreeChannels[lowFreeIdx++];
+          case BoardType.xBand:
+            assignedCh = xFreeChannels[xFreeIdx++];
+        }
+      }
+      updatedBoards.add(
         AssignedBoard(
-          boardNumber: counter++,
-          boardType: BoardType.standard,
-          channel: ch,
+          boardNumber: i + 1,
+          boardType: slot.boardType,
+          channel: assignedCh,
         ),
       );
     }
 
-    for (final ch in lowResult.channels) {
-      boards.add(
-        AssignedBoard(
-          boardNumber: counter++,
-          boardType: BoardType.lowband,
-          channel: ch,
-        ),
-      );
-    }
-
-    for (final ch in xResult.channels) {
-      boards.add(
-        AssignedBoard(
-          boardNumber: counter++,
-          boardType: BoardType.xBand,
-          channel: ch,
-        ),
-      );
-    }
-
-    return FrequencyAllocationResult.success(boards);
+    return FrequencyAllocationResult.success(updatedBoards);
   }
 }

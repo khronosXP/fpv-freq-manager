@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpv_freq_manager/core/constants/fpv_frequencies.dart';
+import 'package:fpv_freq_manager/presentation/providers/fleet_provider.dart';
 import 'package:fpv_freq_manager/presentation/screens/calculator_screen.dart';
 
 void main() {
@@ -12,9 +14,27 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
-  testWidgets('CalculatorScreen switches to manual mode and displays slots', (
-    tester,
-  ) async {
+  testWidgets(
+    'Unified Fleet Canvas: displays slots directly without modal switching',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(createWidgetUnderTest());
+      await tester.pumpAndSettle();
+
+      // In unified mode, both counters and interactive slots are visible immediately
+      expect(find.text('Стандартні борти (A, B, E, F, R)'), findsOneWidget);
+      expect(find.text('СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)'), findsOneWidget);
+      expect(find.text('Борт 1'), findsWidgets);
+      expect(find.text('Борт 2'), findsWidgets);
+      expect(find.text('R1'), findsWidgets);
+      expect(find.text('R4'), findsWidgets);
+    },
+  );
+
+  testWidgets('Unified Canvas: toggle lock on a slot', (tester) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -22,37 +42,7 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    // Verify initial auto mode
-    expect(find.text('Авто-розрахунок'), findsOneWidget);
-    expect(find.text('Ручний інспектор'), findsOneWidget);
-    expect(find.text('Стандартні борти (A, B, E, F, R)'), findsOneWidget);
-
-    // Tap 'Ручний інспектор'
-    await tester.tap(find.text('Ручний інспектор'));
-    await tester.pumpAndSettle();
-
-    // Now in manual mode
-    expect(find.text('СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)'), findsOneWidget);
-    expect(find.text('Борт 1'), findsOneWidget);
-    expect(find.text('Борт 2'), findsOneWidget);
-    expect(find.text('2 / 12 бортів'), findsOneWidget);
-    expect(find.text('R1'), findsOneWidget);
-    expect(find.text('R4'), findsOneWidget);
-  });
-
-  testWidgets('Manual mode: toggle lock on a slot', (tester) async {
-    tester.view.physicalSize = const Size(1080, 1920);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() => tester.view.resetPhysicalSize());
-
-    await tester.pumpWidget(createWidgetUnderTest());
-    await tester.pumpAndSettle();
-
-    // Switch to manual mode
-    await tester.tap(find.text('Ручний інспектор'));
-    await tester.pumpAndSettle();
-
-    // Find unlock icon
+    // Find unlock icon on the first slot
     final unlockIcons = find.byIcon(Icons.lock_open);
     expect(unlockIcons, findsWidgets);
 
@@ -67,30 +57,35 @@ void main() {
     expect(find.byIcon(Icons.lock), findsOneWidget);
   });
 
-  testWidgets('Manual mode: conflict detection and auto-healing', (
+  testWidgets('Unified Canvas: conflict detection and 1-click auto-healing', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(createWidgetUnderTest());
+    late WidgetRef capturedRef;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: Consumer(
+            builder: (context, ref, _) {
+              capturedRef = ref;
+              return const CalculatorScreen();
+            },
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    // Switch to manual mode
-    await tester.tap(find.text('Ручний інспектор'));
+    // Force a conflict by setting Board 2 to R1 (same as Board 1)
+    capturedRef
+        .read(fleetProvider.notifier)
+        .assignChannel(2, FpvFrequencies.bandR[0]);
     await tester.pumpAndSettle();
 
-    // Add a 3rd board
-    await tester.tap(find.text('Додати борт'));
-    await tester.pumpAndSettle();
-
-    // Tap '+ Стандартний (5.8G)' in popup
-    await tester.tap(find.text('+ Стандартний (5.8G)'));
-    await tester.pumpAndSettle();
-
-    // Board 3 added with R1 by default, which clashes with Board 1 (R1)!
-    expect(find.text('Борт 3'), findsOneWidget);
+    // Collision banner appears immediately in real-time
     expect(find.textContaining('КОЛІЗІЇ:'), findsOneWidget);
 
     final autoFixBtn = find.text('Автовиправлення');
@@ -108,7 +103,7 @@ void main() {
   });
 
   testWidgets(
-    'Auto mode calculation automatically syncs boards to manual inspector on switch',
+    'Unified Canvas: incrementing fleet size reactively adds slots and computes optimal grid',
     (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 1.0;
@@ -117,29 +112,26 @@ void main() {
       await tester.pumpWidget(createWidgetUnderTest());
       await tester.pumpAndSettle();
 
-      // In auto mode, increment to 4 standard boards (initial is 2)
+      // Increment to 4 standard boards (initial is 2)
       final incBtn = find.widgetWithIcon(IconButton, Icons.add).first;
       await tester.tap(incBtn);
       await tester.pumpAndSettle();
       await tester.tap(incBtn);
       await tester.pumpAndSettle();
 
+      // 4 slots are displayed immediately
+      expect(find.text('Борт 1'), findsWidgets);
+      expect(find.text('Борт 2'), findsWidgets);
+      expect(find.text('Борт 3'), findsWidgets);
+      expect(find.text('Борт 4'), findsWidgets);
+
       // Tap calculate
       final calcBtn = find.textContaining('Розрахувати сітку');
       await tester.tap(calcBtn);
       await tester.pumpAndSettle();
 
-      // Now switch to 'Ручний інспектор'
-      await tester.tap(find.text('Ручний інспектор'));
-      await tester.pumpAndSettle();
-
-      // All 4 boards should be automatically synced to manual inspector!
-      expect(find.text('4 / 12 бортів'), findsOneWidget);
-      expect(find.text('Борт 1'), findsOneWidget);
-      expect(find.text('Борт 2'), findsOneWidget);
-      expect(find.text('Борт 3'), findsOneWidget);
-      expect(find.text('Борт 4'), findsOneWidget);
-      expect(find.text('З розрахунку (4)'), findsOneWidget);
+      // Grid is clean and verified
+      expect(find.text('СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)'), findsOneWidget);
     },
   );
 }

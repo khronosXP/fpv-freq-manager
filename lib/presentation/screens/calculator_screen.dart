@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/app_mode_provider.dart';
-import '../providers/frequency_manager_provider.dart';
-import '../providers/manual_config_provider.dart';
-import '../views/auto_calculator_view.dart';
-import '../views/manual_configurator_view.dart';
+import '../providers/fleet_provider.dart';
 import '../widgets/calculator_footer.dart';
 import '../widgets/calculator_header_banner.dart';
+import '../widgets/fleet/fleet_action_bar.dart';
+import '../widgets/fleet/fleet_counters_section.dart';
+import '../widgets/fleet/fleet_grid.dart';
+import '../widgets/manual/collision_detail_dialog.dart';
+import '../widgets/manual/collision_summary_banner.dart';
 import '../widgets/quadcopter_logo.dart';
+import '../widgets/result_cheat_sheet.dart';
+import '../widgets/rf_spectrum_chart.dart';
 
 class CalculatorScreen extends ConsumerWidget {
   const CalculatorScreen({super.key});
@@ -16,8 +19,8 @@ class CalculatorScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final currentMode = ref.watch(appModeProvider);
-    final modeNotifier = ref.read(appModeProvider.notifier);
+    final state = ref.watch(fleetProvider);
+    final notifier = ref.read(fleetProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,18 +66,47 @@ class CalculatorScreen extends ConsumerWidget {
                 children: [
                   const CalculatorHeaderBanner(),
                   const SizedBox(height: 14),
-                  _buildModeSelector(
-                    context,
-                    ref,
-                    currentMode,
-                    modeNotifier,
-                    colorScheme,
+
+                  // 1. Блок налаштування флоту (лічильники бортів)
+                  const FleetCountersSection(),
+                  const SizedBox(height: 14),
+
+                  // 2. Панель дій (кнопка розрахунку та статус безпеки)
+                  const FleetActionBar(),
+                  const SizedBox(height: 14),
+
+                  // 3. Банер колізій (1-click автовиправлення)
+                  CollisionSummaryBanner(
+                    report: state.conflictReport,
+                    isResolving: state.isCalculating,
+                    onAutoResolve: notifier.autoHealUnlocked,
+                    onShowDetails: () => CollisionDetailDialog.show(
+                      context,
+                      state.conflictReport,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (currentMode == FpvManagerMode.auto)
-                    const AutoCalculatorView()
-                  else
-                    const ManualConfiguratorView(),
+                  const SizedBox(height: 10),
+
+                  // 4. Інтерактивна матриця бортів (замки 🔒, вибір частот)
+                  const FleetGrid(),
+                  const SizedBox(height: 20),
+
+                  // 5. Графік радіочастотного спектра та чітшит
+                  if (state.assignedBoards.isNotEmpty) ...[
+                    RfSpectrumChart(
+                      boards: state.assignedBoards,
+                      selectedBoardNumber: state.selectedSlotId,
+                      onSelectBoard: notifier.selectSlot,
+                    ),
+                    const SizedBox(height: 20),
+                    ResultCheatSheet(
+                      boards: state.assignedBoards,
+                      selectedBoardNumber: state.selectedSlotId,
+                      onSelectBoard: notifier.selectSlot,
+                      onReset: notifier.resetFleet,
+                    ),
+                  ],
+
                   const SizedBox(height: 28),
                   const CalculatorFooter(),
                   const SizedBox(height: 16),
@@ -82,53 +114,6 @@ class CalculatorScreen extends ConsumerWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModeSelector(
-    BuildContext context,
-    WidgetRef ref,
-    FpvManagerMode currentMode,
-    AppModeNotifier notifier,
-    ColorScheme colorScheme,
-  ) {
-    return SegmentedButton<FpvManagerMode>(
-      segments: const [
-        ButtonSegment<FpvManagerMode>(
-          value: FpvManagerMode.auto,
-          icon: Icon(Icons.auto_awesome, size: 18),
-          label: Text('Авто-розрахунок'),
-        ),
-        ButtonSegment<FpvManagerMode>(
-          value: FpvManagerMode.manual,
-          icon: Icon(Icons.tune, size: 18),
-          label: Text('Ручний інспектор'),
-        ),
-      ],
-      selected: {currentMode},
-      onSelectionChanged: (selected) {
-        if (selected.isNotEmpty) {
-          final newMode = selected.first;
-          if (newMode == FpvManagerMode.manual) {
-            final autoState = ref.read(frequencyManagerProvider);
-            if (autoState.hasGenerated &&
-                autoState.result != null &&
-                autoState.result!.isSuccess &&
-                autoState.result!.boards.isNotEmpty) {
-              ref
-                  .read(manualConfigProvider.notifier)
-                  .syncWithAllocationIfUntouched(autoState.result!.boards);
-            }
-          }
-          notifier.setMode(newMode);
-        }
-      },
-      style: ButtonStyle(
-        visualDensity: VisualDensity.compact,
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
