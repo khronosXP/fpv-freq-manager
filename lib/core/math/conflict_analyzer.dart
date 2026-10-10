@@ -26,6 +26,7 @@ class ImdCollision {
   final ManualDroneSlot victim;
   final int imdFrequency;
   final int distance;
+  final int threshold;
 
   const ImdCollision({
     required this.transmitter1,
@@ -33,11 +34,12 @@ class ImdCollision {
     required this.victim,
     required this.imdFrequency,
     required this.distance,
+    this.threshold = ImdValidator.minImdDistance,
   });
 
   @override
   String toString() =>
-      '2×Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) - Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < 10 МГц)';
+      '2×Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) - Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < $threshold МГц)';
 }
 
 class TripleBeatCollision {
@@ -47,6 +49,7 @@ class TripleBeatCollision {
   final ManualDroneSlot victim;
   final int imdFrequency;
   final int distance;
+  final int threshold;
 
   const TripleBeatCollision({
     required this.transmitter1,
@@ -55,13 +58,14 @@ class TripleBeatCollision {
     required this.victim,
     required this.imdFrequency,
     required this.distance,
+    this.threshold = ImdValidator.minImdDistance,
   });
 
   int get beatFrequency => imdFrequency;
 
   @override
   String toString() =>
-      'Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) + Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) - Борт ${transmitter3.boardNumber} (${transmitter3.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < 10 МГц)';
+      'Борт ${transmitter1.boardNumber} (${transmitter1.channel?.code}) + Борт ${transmitter2.boardNumber} (${transmitter2.channel?.code}) - Борт ${transmitter3.boardNumber} (${transmitter3.channel?.code}) = $imdFrequency МГц глушить Борт ${victim.boardNumber} (${victim.channel?.code}, зазор $distance МГц < $threshold МГц)';
 }
 
 class ConflictReport {
@@ -72,19 +76,14 @@ class ConflictReport {
   final Map<int, List<FpvChannel>> suggestionsBySlotId;
 
   const ConflictReport({
-    required this.directCollisions,
-    required this.imdCollisions,
+    this.directCollisions = const [],
+    this.imdCollisions = const [],
     this.tripleBeatCollisions = const [],
-    required this.conflictedSlotIds,
-    required this.suggestionsBySlotId,
+    this.conflictedSlotIds = const {},
+    this.suggestionsBySlotId = const {},
   });
 
-  const ConflictReport.empty()
-    : directCollisions = const [],
-      imdCollisions = const [],
-      tripleBeatCollisions = const [],
-      conflictedSlotIds = const {},
-      suggestionsBySlotId = const {};
+  const ConflictReport.empty() : this();
 
   bool get hasCollisions =>
       directCollisions.isNotEmpty ||
@@ -128,7 +127,9 @@ class ConflictAnalyzer {
       }
     }
 
-    // 2. Інтермодуляційні колізії IMD3 (|2*f1 - f2 - f3| < 10 МГц)
+    // 2. Інтермодуляційні колізії IMD3 (Стандартний допуск 12 МГц)
+    const imdThreshold = ImdValidator.minImdDistance;
+
     final imd = <ImdCollision>[];
     if (assignedSlots.length >= 3) {
       for (int i = 0; i < assignedSlots.length; i++) {
@@ -147,7 +148,7 @@ class ConflictAnalyzer {
             final f3 = vic.channel!.frequency;
             final dist = (imdFreq - f3).abs();
 
-            if (dist < ImdValidator.minImdDistance) {
+            if (dist < imdThreshold) {
               // Уникаємо однакових дублікатів
               final alreadyAdded = imd.any(
                 (c) =>
@@ -163,6 +164,7 @@ class ConflictAnalyzer {
                     victim: vic,
                     imdFrequency: imdFreq,
                     distance: dist,
+                    threshold: imdThreshold,
                   ),
                 );
                 conflictedIds.add(t1.id);
@@ -199,7 +201,7 @@ class ConflictAnalyzer {
               final fVic = vic.channel!.frequency;
               final dist = (beatFreq - fVic).abs();
 
-              if (dist < ImdValidator.minImdDistance) {
+              if (dist < imdThreshold) {
                 final alreadyAdded = tripleBeat.any(
                   (c) =>
                       c.transmitter1.id == t1.id &&
@@ -216,6 +218,7 @@ class ConflictAnalyzer {
                       victim: vic,
                       imdFrequency: beatFreq,
                       distance: dist,
+                      threshold: imdThreshold,
                     ),
                   );
                   conflictedIds.add(t1.id);
@@ -231,12 +234,11 @@ class ConflictAnalyzer {
     }
 
     // 4. Генерація рекомендацій заміни для незаблокованих конфліктних слотів
-    final suggestions = <int, List<FpvChannel>>{};
-    for (final slot in assignedSlots) {
-      if (!slot.isLocked && conflictedIds.contains(slot.id)) {
-        suggestions[slot.id] = _findSuggestionsForSlot(slot, assignedSlots);
-      }
-    }
+    final suggestions = {
+      for (final slot in assignedSlots)
+        if (!slot.isLocked && conflictedIds.contains(slot.id))
+          slot.id: _findSuggestionsForSlot(slot, assignedSlots, imdThreshold),
+    };
 
     return ConflictReport(
       directCollisions: direct,
@@ -251,6 +253,7 @@ class ConflictAnalyzer {
   List<FpvChannel> _findSuggestionsForSlot(
     ManualDroneSlot target,
     List<ManualDroneSlot> allAssigned,
+    int imdThreshold,
   ) {
     // Всі інші частоти, крім target
     final otherFrequencies = allAssigned
@@ -264,7 +267,11 @@ class ConflictAnalyzer {
     for (final candidate in allowedPool) {
       if (candidate.code == target.channel?.code) continue;
 
-      if (ImdValidator.canAddFrequency(otherFrequencies, candidate.frequency)) {
+      if (ImdValidator.canAddFrequency(
+        otherFrequencies,
+        candidate.frequency,
+        minDistance: imdThreshold,
+      )) {
         validAlternatives.add(candidate);
       }
     }

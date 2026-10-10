@@ -106,12 +106,12 @@ class FleetGrid extends ConsumerWidget {
     for (final imd in report.imdCollisions) {
       if (imd.victim.id == slot.id) {
         reasons.add(
-          'Глушиться комбінацією 2×Б${imd.transmitter1.boardNumber} - Б${imd.transmitter2.boardNumber} (зазор ${imd.distance} МГц < 10 МГц)',
+          'Глушиться комбінацією 2×Б${imd.transmitter1.boardNumber} - Б${imd.transmitter2.boardNumber} (зазор ${imd.distance} МГц < ${imd.threshold} МГц)',
         );
       } else if (imd.transmitter1.id == slot.id ||
           imd.transmitter2.id == slot.id) {
         reasons.add(
-          'Створює IMD3 заваду на Борт ${imd.victim.boardNumber} (зазор ${imd.distance} МГц < 10 МГц)',
+          'Створює IMD3 заваду на Борт ${imd.victim.boardNumber} (зазор ${imd.distance} МГц < ${imd.threshold} МГц)',
         );
       }
     }
@@ -119,13 +119,13 @@ class FleetGrid extends ConsumerWidget {
     for (final tb in report.tripleBeatCollisions) {
       if (tb.victim.id == slot.id) {
         reasons.add(
-          'Triple-Beat резонанс від Б${tb.transmitter1.boardNumber}+Б${tb.transmitter2.boardNumber}-Б${tb.transmitter3.boardNumber} (зазор ${tb.distance} МГц < 10 МГц)',
+          'Triple-Beat резонанс від Б${tb.transmitter1.boardNumber}+Б${tb.transmitter2.boardNumber}-Б${tb.transmitter3.boardNumber} (зазор ${tb.distance} МГц < ${tb.threshold} МГц)',
         );
       } else if (tb.transmitter1.id == slot.id ||
           tb.transmitter2.id == slot.id ||
           tb.transmitter3.id == slot.id) {
         reasons.add(
-          'Створює Triple-Beat заваду на Борт ${tb.victim.boardNumber} (зазор ${tb.distance} МГц < 10 МГц)',
+          'Створює Triple-Beat заваду на Борт ${tb.victim.boardNumber} (зазор ${tb.distance} МГц < ${tb.threshold} МГц)',
         );
       }
     }

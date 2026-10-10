@@ -15,6 +15,7 @@ class FleetActionBar extends ConsumerWidget {
     final total = state.totalBoards;
     final isCalculating = state.isCalculating;
     final hasCollisions = state.hasConflicts;
+    final imdTarget = state.standardCount == 6 ? 10 : 12;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,7 +99,7 @@ class FleetActionBar extends ConsumerWidget {
                 child: Text(
                   hasCollisions
                       ? 'УВАГА: Виявлено колізії частот або IMD3'
-                      : 'СІТКА БЕЗПЕЧНА • Δf ≥ 40 MHz • IMD3 ≥ 10 MHz',
+                      : 'СІТКА БЕЗПЕЧНА • Δf ≥ 40 MHz • IMD3 ≥ $imdTarget MHz',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: hasCollisions
                         ? colorScheme.error
