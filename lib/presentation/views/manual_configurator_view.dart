@@ -274,12 +274,12 @@ class ManualConfiguratorView extends ConsumerWidget {
     for (final imd in report.imdCollisions) {
       if (imd.victim.id == slot.id) {
         reasons.add(
-          'Глушиться комбінацією 2×Б${imd.transmitter1.boardNumber} - Б${imd.transmitter2.boardNumber} (зазор ${imd.distance} МГц < 10 МГц)',
+          'Глушиться комбінацією 2×Б${imd.transmitter1.boardNumber} - Б${imd.transmitter2.boardNumber} (зазор ${imd.distance} МГц < ${imd.threshold} МГц)',
         );
       } else if (imd.transmitter1.id == slot.id ||
           imd.transmitter2.id == slot.id) {
         reasons.add(
-          'Створює IMD3 заваду на Борт ${imd.victim.boardNumber} (зазор ${imd.distance} МГц < 10 МГц)',
+          'Створює IMD3 заваду на Борт ${imd.victim.boardNumber} (зазор ${imd.distance} МГц < ${imd.threshold} МГц)',
         );
       }
     }

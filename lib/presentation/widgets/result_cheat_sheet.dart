@@ -200,7 +200,7 @@ class ResultCheatSheet extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'ВЕРИФІКОВАНО: Δf ≥ 40 MHz • IMD3 ≥ 10 MHz • RHCP',
+                  'ВЕРИФІКОВАНО: Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • RHCP',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.tertiary,
                     fontFamily: 'monospace',

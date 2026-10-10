@@ -177,7 +177,7 @@ class ConflictAnalyzer {
       }
     }
 
-    // 3. Тритонові інтермодуляційні колізії Triple-Beat (|f1 + f2 - f3 - f_victim| < 10 МГц)
+    // 3. Тритонові інтермодуляційні колізії Triple-Beat (|f1 + f2 - f3 - f_victim| < 12 МГц)
     final tripleBeat = <TripleBeatCollision>[];
     if (assignedSlots.length >= 4) {
       final n = assignedSlots.length;

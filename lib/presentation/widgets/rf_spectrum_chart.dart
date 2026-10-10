@@ -152,7 +152,7 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
                 ),
               ),
               child: Text(
-                'Δf ≥ 40 MHz • IMD3 ≥ 10 MHz',
+                'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.tertiary,
                   fontWeight: FontWeight.bold,

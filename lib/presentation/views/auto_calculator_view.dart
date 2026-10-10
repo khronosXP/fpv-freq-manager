@@ -247,7 +247,7 @@ class AutoCalculatorView extends ConsumerWidget {
           ),
           icon: Icon(Icons.edit_note, color: colorScheme.primary),
           label: Text(
-            'Налаштувати або зафіксувати в ручному режимі ➔',
+            'Налаштувати або зафіксувати в ручному режимі',
             style: TextStyle(
               color: colorScheme.primary,
               fontWeight: FontWeight.bold,

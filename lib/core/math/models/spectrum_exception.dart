@@ -36,7 +36,7 @@ class SpectrumExhaustedException implements Exception {
       requestedCount: requestedCount,
       message:
           'Неможливо підібрати чисту сітку для $requestedCount бортів у діапазоні ${boardType.label} '
-          'із дотриманням Δf ≥ 40 МГц та IMD3 ≥ 10 МГц.',
+          'із дотриманням Δf ≥ 40 МГц та IMD3 ≥ 12 МГц.',
     );
   }
 

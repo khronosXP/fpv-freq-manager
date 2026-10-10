@@ -17,7 +17,7 @@ class ResultClipboardHelper {
       );
     }
     buffer.writeln('==========================================');
-    buffer.writeln('Δf ≥ 40 MHz • IMD3 ≥ 10 MHz • RHCP');
+    buffer.writeln('Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • RHCP');
     Clipboard.setData(ClipboardData(text: buffer.toString()));
 
     final messenger = ScaffoldMessenger.of(context);
