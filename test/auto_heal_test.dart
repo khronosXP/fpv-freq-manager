@@ -217,5 +217,29 @@ void main() {
         expect(state.slots[1].channel?.code, equals('R2'));
       },
     );
+
+    test(
+      'calculateOptimalFleet automatically harmonizes multi-band fleet (4 standard, 2 lowband, 2 xband)',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+
+        final notifier = container.read(fleetProvider.notifier);
+        notifier.toggleExtendedBands();
+        notifier.incrementStandard();
+        notifier.incrementStandard();
+        notifier.incrementLowband();
+        notifier.incrementLowband();
+        notifier.incrementXBand();
+        notifier.incrementXBand();
+
+        await notifier.calculateOptimalFleet();
+
+        final state = container.read(fleetProvider);
+        expect(state.slots.length, equals(8));
+        expect(state.hasConflicts, isFalse);
+        expect(state.conflictReport.isClean, isTrue);
+      },
+    );
   });
 }

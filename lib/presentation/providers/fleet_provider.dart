@@ -174,10 +174,24 @@ class FleetNotifier extends Notifier<FleetState> {
     final result = _allocator.allocateFleetSlots(currentSlots: activeSlots);
 
     if (result.isSuccess) {
-      final updatedSlots = _applyBoards(activeSlots, result.boards);
+      var updatedSlots = _applyBoards(activeSlots, result.boards);
+      var report = _analyzer.analyze(updatedSlots);
+
+      // Якщо в Multi-Band виникли міждіапазонні колізії (Cross-Band IMD3), гармонізуємо їх
+      if (report.hasCollisions) {
+        final healResult = _resolver.resolve(updatedSlots);
+        if (healResult.isSuccess && healResult.changedSlotIds.isNotEmpty) {
+          final healedReport = _analyzer.analyze(healResult.resolvedSlots);
+          if (healedReport.isClean) {
+            updatedSlots = healResult.resolvedSlots;
+            report = healedReport;
+          }
+        }
+      }
+
       state = state.copyWith(
         slots: updatedSlots,
-        conflictReport: _analyzer.analyze(updatedSlots),
+        conflictReport: report,
         hasGenerated: true,
         isCalculating: false,
         lastStatusMessage: () => null,
