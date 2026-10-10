@@ -10,7 +10,6 @@ import '../widgets/fleet/fleet_grid.dart';
 import '../widgets/manual/collision_detail_dialog.dart';
 import '../widgets/manual/collision_summary_banner.dart';
 import '../widgets/quadcopter_logo.dart';
-import '../widgets/result_cheat_sheet.dart';
 import '../widgets/rf_spectrum_chart.dart';
 
 class CalculatorScreen extends ConsumerWidget {
@@ -23,6 +22,52 @@ class CalculatorScreen extends ConsumerWidget {
     final state = ref.watch(fleetProvider);
     final notifier = ref.read(fleetProvider.notifier);
     final themeMode = ref.watch(themeModeProvider);
+
+    ref.listen<FleetState>(fleetProvider, (previous, next) {
+      final msg = next.lastStatusMessage;
+      if (msg != null && msg != previous?.lastStatusMessage) {
+        final isSuccess = !next.hasConflicts;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle_outline : Icons.info_outline,
+                  color: isSuccess ? colorScheme.tertiary : colorScheme.error,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    msg,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isSuccess
+                          ? colorScheme.onSurface
+                          : colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: isSuccess
+                ? colorScheme.surfaceContainerHighest
+                : colorScheme.errorContainer,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isSuccess
+                    ? colorScheme.tertiary.withValues(alpha: 0.5)
+                    : colorScheme.error.withValues(alpha: 0.5),
+              ),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -97,6 +142,7 @@ class CalculatorScreen extends ConsumerWidget {
                   CollisionSummaryBanner(
                     report: state.conflictReport,
                     isResolving: state.isCalculating,
+                    statusMessage: state.lastStatusMessage,
                     onAutoResolve: notifier.autoHealUnlocked,
                     onShowDetails: () => CollisionDetailDialog.show(
                       context,
@@ -105,23 +151,16 @@ class CalculatorScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // 4. Інтерактивна матриця бортів (замки 🔒, вибір частот)
+                  // 4. Єдиний перелік бортів флоту (ручний вибір частот, замки 🔒, копіювання)
                   const FleetGrid(),
                   const SizedBox(height: 20),
 
-                  // 5. Графік радіочастотного спектра та чітшит
+                  // 5. Графік радіочастотного спектра (останній блок перед футером)
                   if (state.assignedBoards.isNotEmpty) ...[
                     RfSpectrumChart(
                       boards: state.assignedBoards,
                       selectedBoardNumber: state.selectedSlotId,
                       onSelectBoard: notifier.selectSlot,
-                    ),
-                    const SizedBox(height: 20),
-                    ResultCheatSheet(
-                      boards: state.assignedBoards,
-                      selectedBoardNumber: state.selectedSlotId,
-                      onSelectBoard: notifier.selectSlot,
-                      onReset: notifier.resetFleet,
                     ),
                   ],
 

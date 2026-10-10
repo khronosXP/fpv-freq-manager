@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpv_freq_manager/main.dart';
+import 'package:fpv_freq_manager/presentation/widgets/fleet/fleet_grid.dart';
 import 'package:fpv_freq_manager/presentation/widgets/rf_spectrum_chart.dart';
-import 'package:fpv_freq_manager/presentation/widgets/result_cheat_sheet.dart';
 
 void main() {
   testWidgets(
-    'CalculatorScreen: renders header, increments, generates horizontally scrollable spectrum and cheat sheet',
+    'CalculatorScreen: renders header, increments, generates horizontally scrollable spectrum and unified grid',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(child: FpvFrequencyManagerApp()),
@@ -34,10 +34,11 @@ void main() {
       await tester.tap(generateBtn);
       await tester.pumpAndSettle();
 
-      // Verification: Spectrum chart & Cheat-sheet appear
+      // Verification: Spectrum chart & Unified grid appear
       expect(find.byType(RfSpectrumChart), findsOneWidget);
       expect(find.text('Скрол ↔'), findsOneWidget);
-      expect(find.byType(ResultCheatSheet), findsOneWidget);
+      expect(find.byType(FleetGrid), findsOneWidget);
+      expect(find.textContaining('СІТКА ЧАСТОТ (3 борти)'), findsOneWidget);
       expect(find.text('Борт 1'), findsWidgets);
       expect(find.text('Борт 2'), findsWidgets);
       expect(find.text('Борт 3'), findsWidgets);

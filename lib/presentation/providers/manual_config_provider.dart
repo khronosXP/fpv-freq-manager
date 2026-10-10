@@ -280,18 +280,13 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
     BoardType.xBand => FpvFrequencies.bandX[0],
   };
 
-  bool _isChannelCompatibleWithType(FpvChannel? ch, BoardType type) {
-    if (ch == null) return false;
-    return switch (type) {
-      BoardType.standard => ch.category == BandCategory.standard,
-      BoardType.lowband =>
-        ch.category == BandCategory.lowband ||
-            ch.category == BandCategory.standard,
-      BoardType.xBand =>
-        ch.category == BandCategory.xBand ||
-            ch.category == BandCategory.standard,
-    };
-  }
+  bool _isChannelCompatibleWithType(FpvChannel? ch, BoardType type) =>
+      ch != null &&
+      switch (type) {
+        BoardType.standard => ch.category == BandCategory.standard,
+        BoardType.lowband => ch.category == BandCategory.lowband,
+        BoardType.xBand => ch.category == BandCategory.xBand,
+      };
 }
 
 final manualConfigProvider =

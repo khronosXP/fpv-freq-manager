@@ -4,6 +4,7 @@ import '../../../core/math/conflict_analyzer.dart';
 class CollisionSummaryBanner extends StatelessWidget {
   final ConflictReport report;
   final bool isResolving;
+  final String? statusMessage;
   final VoidCallback onAutoResolve;
   final VoidCallback onShowDetails;
 
@@ -11,6 +12,7 @@ class CollisionSummaryBanner extends StatelessWidget {
     super.key,
     required this.report,
     required this.isResolving,
+    this.statusMessage,
     required this.onAutoResolve,
     required this.onShowDetails,
   });
@@ -133,6 +135,36 @@ class CollisionSummaryBanner extends StatelessWidget {
               ),
             ],
           ),
+          if (statusMessage != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: colorScheme.error.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: colorScheme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      statusMessage!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           _buildActionButtons(colorScheme),
         ],

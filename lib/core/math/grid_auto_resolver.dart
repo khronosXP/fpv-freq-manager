@@ -32,13 +32,11 @@ class GridAutoResolver {
 
   /// Вирішує радіоколізії, суворо зберігаючи незмінними зафіксовані (isLocked) борти
   AutoFixResult resolve(List<ManualDroneSlot> slots) {
-    final assignedSlots = slots.where((s) => s.isAssigned).toList();
-    if (assignedSlots.isEmpty) {
-      return AutoFixResult.success(
-        resolvedSlots: slots,
-        changedSlotIds: const {},
-      );
+    if (slots.isEmpty) {
+      return const AutoFixResult.success(resolvedSlots: [], changedSlotIds: {});
     }
+
+    final assignedSlots = slots.where((s) => s.isAssigned).toList();
 
     // 1. Перевірка взаємної колізії зафіксованих каналів
     final lockedSlots = assignedSlots.where((s) => s.isLocked).toList();
@@ -50,31 +48,43 @@ class GridAutoResolver {
       );
     }
 
-    // Якщо поточна конфігурація вже чиста
+    // Якщо всі канали призначені і поточна конфігурація вже чиста
     final currentReport = _analyzer.analyze(assignedSlots);
-    if (currentReport.isClean) {
+    if (assignedSlots.length == slots.length && currentReport.isClean) {
       return AutoFixResult.success(
         resolvedSlots: slots,
         changedSlotIds: const {},
       );
     }
 
+    // Адаптивний поріг IMD3: для 6 стандартних бортів фізично необхідний допуск 10 МГц
+    final standardCount = slots
+        .where((s) => s.boardType == BoardType.standard)
+        .length;
+    final minDistance = standardCount == 6
+        ? ImdValidator.marginalImdDistance
+        : ImdValidator.minImdDistance;
+
     // 2. Фаза 1 (Micro-fix): тримаємо чисті незаблоковані слоти незмінними,
-    // міняємо тільки конфліктні незаблоковані слоти.
+    // міняємо тільки конфліктні незаблоковані або непризначені слоти.
     final fixedSlotsPhase1 = assignedSlots
         .where(
           (s) => s.isLocked || !currentReport.conflictedSlotIds.contains(s.id),
         )
         .toList();
-    final toResolvePhase1 = assignedSlots
+    final toResolvePhase1 = slots
         .where(
-          (s) => !s.isLocked && currentReport.conflictedSlotIds.contains(s.id),
+          (s) =>
+              !s.isLocked &&
+              (s.channel == null ||
+                  currentReport.conflictedSlotIds.contains(s.id)),
         )
         .toList();
 
     final phase1Solution = _solveSlots(
       fixedSlots: fixedSlotsPhase1,
       variableSlots: toResolvePhase1,
+      minDistance: minDistance,
     );
 
     if (phase1Solution != null) {
@@ -84,11 +94,12 @@ class GridAutoResolver {
     // 3. Фаза 2 (Macro-fix): тримаємо тільки locked слоти,
     // змінюємо всі незаблоковані слоти.
     final fixedSlotsPhase2 = lockedSlots;
-    final toResolvePhase2 = assignedSlots.where((s) => !s.isLocked).toList();
+    final toResolvePhase2 = slots.where((s) => !s.isLocked).toList();
 
     final phase2Solution = _solveSlots(
       fixedSlots: fixedSlotsPhase2,
       variableSlots: toResolvePhase2,
+      minDistance: minDistance,
     );
 
     if (phase2Solution != null) {
@@ -105,17 +116,19 @@ class GridAutoResolver {
   Map<int, FpvChannel>? _solveSlots({
     required List<ManualDroneSlot> fixedSlots,
     required List<ManualDroneSlot> variableSlots,
+    required int minDistance,
   }) {
     final fixedFrequencies = fixedSlots
         .map((s) => s.channel!.frequency)
         .toList();
     final usedCodes = fixedSlots.map((s) => s.channel!.code).toSet();
 
-    // Сортуємо кандидатів для кожного слота за мінімальним відхиленням від поточного значення
+    // Сортуємо кандидатів для кожного слота за мінімальним відхиленням від поточної частоти
     final candidatesBySlot = <List<FpvChannel>>[];
     for (final slot in variableSlots) {
       final pool = _getCandidatePool(slot.boardType).toList();
-      final currentFreq = slot.channel?.frequency ?? 5800;
+      final currentFreq =
+          slot.channel?.frequency ?? _defaultFreqFor(slot.boardType);
       pool.sort(
         (a, b) => (a.frequency - currentFreq).abs().compareTo(
           (b.frequency - currentFreq).abs(),
@@ -135,6 +148,7 @@ class GridAutoResolver {
       chosenChannels: chosenChannels,
       currentFrequencies: currentFrequencies,
       currentUsedCodes: currentUsedCodes,
+      minDistance: minDistance,
     );
 
     if (!success) return null;
@@ -153,6 +167,7 @@ class GridAutoResolver {
     required List<FpvChannel> chosenChannels,
     required List<int> currentFrequencies,
     required Set<String> currentUsedCodes,
+    required int minDistance,
   }) {
     if (slotIndex == variableSlots.length) {
       return true;
@@ -167,6 +182,7 @@ class GridAutoResolver {
       if (!ImdValidator.canAddFrequency(
         currentFrequencies,
         candidate.frequency,
+        minDistance: minDistance,
       )) {
         continue;
       }
@@ -182,6 +198,7 @@ class GridAutoResolver {
         chosenChannels: chosenChannels,
         currentFrequencies: currentFrequencies,
         currentUsedCodes: currentUsedCodes,
+        minDistance: minDistance,
       )) {
         return true;
       }
@@ -216,20 +233,15 @@ class GridAutoResolver {
     );
   }
 
-  List<FpvChannel> _getCandidatePool(BoardType type) {
-    switch (type) {
-      case BoardType.standard:
-        return FpvFrequencies.standardChannels;
-      case BoardType.lowband:
-        return [
-          ...FpvFrequencies.lowbandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
-      case BoardType.xBand:
-        return [
-          ...FpvFrequencies.xBandChannels,
-          ...FpvFrequencies.standardChannels,
-        ];
-    }
-  }
+  int _defaultFreqFor(BoardType type) => switch (type) {
+    BoardType.standard => 5800,
+    BoardType.lowband => 5450,
+    BoardType.xBand => 5100,
+  };
+
+  List<FpvChannel> _getCandidatePool(BoardType type) => switch (type) {
+    BoardType.standard => FpvFrequencies.standardChannels,
+    BoardType.lowband => FpvFrequencies.lowbandChannels,
+    BoardType.xBand => FpvFrequencies.xBandChannels,
+  };
 }

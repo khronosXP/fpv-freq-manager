@@ -282,13 +282,7 @@ class ConflictAnalyzer {
 
   List<FpvChannel> _getCandidatePool(BoardType type) => switch (type) {
     BoardType.standard => FpvFrequencies.standardChannels,
-    BoardType.lowband => [
-      ...FpvFrequencies.lowbandChannels,
-      ...FpvFrequencies.standardChannels,
-    ],
-    BoardType.xBand => [
-      ...FpvFrequencies.xBandChannels,
-      ...FpvFrequencies.standardChannels,
-    ],
+    BoardType.lowband => FpvFrequencies.lowbandChannels,
+    BoardType.xBand => FpvFrequencies.xBandChannels,
   };
 }

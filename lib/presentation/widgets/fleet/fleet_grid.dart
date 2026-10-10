@@ -4,18 +4,61 @@ import '../../../core/math/conflict_analyzer.dart';
 import '../../../core/models/fleet_drone_slot.dart';
 import '../../providers/fleet_provider.dart';
 import '../manual/manual_drone_slot_card.dart';
+import '../result_clipboard_helper.dart';
 
 class FleetGrid extends ConsumerWidget {
   const FleetGrid({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final state = ref.watch(fleetProvider);
     final notifier = ref.read(fleetProvider.notifier);
+    final count = state.slots.length;
+    final hasAssigned = state.assignedBoards.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Заголовок єдиного переліку бортів з дією швидкого копіювання
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.table_chart, size: 20, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'СІТКА ЧАСТОТ ($count ${ResultClipboardHelper.pluralBoards(count)})',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            if (hasAssigned)
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Копіювати'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(110, 44),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                onPressed: () => ResultClipboardHelper.copyToClipboard(
+                  context,
+                  state.assignedBoards,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
         ...state.slots.map((slot) {
           final hasConflict = state.conflictReport.conflictedSlotIds.contains(
             slot.id,
