@@ -46,9 +46,9 @@ class FleetActionBar extends ConsumerWidget {
                   ),
                 ),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -59,8 +59,9 @@ class FleetActionBar extends ConsumerWidget {
               icon: const Icon(Icons.refresh, size: 20),
               onPressed: isCalculating ? null : notifier.resetFleet,
               style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),

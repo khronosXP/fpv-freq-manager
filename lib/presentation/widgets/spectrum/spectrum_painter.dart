@@ -1,7 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/models/assigned_board.dart';
 import '../../../core/models/board_type.dart';
+import 'spectrum_painter_helpers.dart';
 
 class SpectrumPainter extends CustomPainter {
   final List<AssignedBoard> boards;
@@ -65,158 +65,69 @@ class SpectrumPainter extends CustomPainter {
     }
 
     // 2. Band Regions
-    _drawBandRegion(
-      canvas,
-      width,
-      4990,
-      5200,
-      'X-BAND (4.9G)',
-      colorScheme.tertiary,
+    SpectrumPainterHelpers.drawBandRegion(
+      canvas: canvas,
+      width: width,
+      startFreq: 4990,
+      endFreq: 5200,
+      label: 'X-BAND (4.9G)',
+      bandColor: colorScheme.tertiary,
+      chartMin: chartMin,
+      chartMax: chartMax,
+      textTheme: textTheme,
+      freqToX: _freqToX,
     );
-    _drawBandRegion(
-      canvas,
-      width,
-      5333,
-      5613,
-      'LOWBAND (5.3G)',
-      colorScheme.secondary,
+    SpectrumPainterHelpers.drawBandRegion(
+      canvas: canvas,
+      width: width,
+      startFreq: 5333,
+      endFreq: 5613,
+      label: 'LOWBAND (5.3G)',
+      bandColor: colorScheme.secondary,
+      chartMin: chartMin,
+      chartMax: chartMax,
+      textTheme: textTheme,
+      freqToX: _freqToX,
     );
-    _drawBandRegion(
-      canvas,
-      width,
-      5645,
-      5945,
-      'STANDARD (5.8G)',
-      colorScheme.primary,
+    SpectrumPainterHelpers.drawBandRegion(
+      canvas: canvas,
+      width: width,
+      startFreq: 5645,
+      endFreq: 5945,
+      label: 'STANDARD (5.8G)',
+      bandColor: colorScheme.primary,
+      chartMin: chartMin,
+      chartMax: chartMax,
+      textTheme: textTheme,
+      freqToX: _freqToX,
     );
 
     // 3. IMD3 Harmonics
-    _drawImd3Harmonics(canvas, width, baselineY);
+    SpectrumPainterHelpers.drawImd3Harmonics(
+      canvas: canvas,
+      width: width,
+      baselineY: baselineY,
+      boards: boards,
+      chartMin: chartMin,
+      chartMax: chartMax,
+      colorScheme: colorScheme,
+      freqToX: _freqToX,
+    );
 
     // 4. Spacing Indicators
-    _drawSpacingIndicators(canvas, width, baselineY);
+    SpectrumPainterHelpers.drawSpacingIndicators(
+      canvas: canvas,
+      width: width,
+      baselineY: baselineY,
+      boards: boards,
+      colorScheme: colorScheme,
+      textTheme: textTheme,
+      freqToX: _freqToX,
+    );
 
     // 5. Active Channel Peaks
     for (final board in boards) {
       _drawChannelPeak(canvas, width, baselineY, board);
-    }
-  }
-
-  void _drawBandRegion(
-    Canvas canvas,
-    double width,
-    int startFreq,
-    int endFreq,
-    String label,
-    Color bandColor,
-  ) {
-    if (endFreq < chartMin || startFreq > chartMax) return;
-    final clampedStart = math.max(startFreq, chartMin);
-    final clampedEnd = math.min(endFreq, chartMax);
-
-    final x1 = _freqToX(clampedStart, width);
-    final x2 = _freqToX(clampedEnd, width);
-
-    final rect = Rect.fromLTRB(x1, 2, x2, 16);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
-      Paint()..color = bandColor.withValues(alpha: 0.08),
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
-      Paint()
-        ..color = bandColor.withValues(alpha: 0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8,
-    );
-
-    if ((x2 - x1) > 40) {
-      final span = TextSpan(
-        text: label,
-        style: textTheme.labelSmall?.copyWith(
-          color: bandColor,
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
-      );
-      final tp = TextPainter(text: span, textDirection: TextDirection.ltr)
-        ..layout();
-      tp.paint(canvas, Offset(x1 + (x2 - x1 - tp.width) / 2, 4));
-    }
-  }
-
-  void _drawImd3Harmonics(Canvas canvas, double width, double baselineY) {
-    final imdFreqs = <int>{};
-    final freqs = boards.map((b) => b.channel.frequency).toList();
-
-    for (int i = 0; i < freqs.length; i++) {
-      for (int j = 0; j < freqs.length; j++) {
-        if (i == j) continue;
-        final fImd = 2 * freqs[i] - freqs[j];
-        if (fImd >= chartMin && fImd <= chartMax) {
-          imdFreqs.add(fImd);
-        }
-      }
-    }
-
-    final imdPaint = Paint()
-      ..color = colorScheme.error.withValues(alpha: 0.45)
-      ..strokeWidth = 1.0;
-
-    for (final f in imdFreqs) {
-      final x = _freqToX(f, width);
-      const topY = 75.0;
-
-      double curY = baselineY;
-      while (curY > topY) {
-        final nextY = math.max(curY - 4.0, topY);
-        canvas.drawLine(Offset(x, curY), Offset(x, nextY), imdPaint);
-        curY -= 7.0;
-      }
-
-      canvas.drawCircle(
-        Offset(x, topY),
-        1.5,
-        Paint()..color = colorScheme.error.withValues(alpha: 0.6),
-      );
-    }
-  }
-
-  void _drawSpacingIndicators(Canvas canvas, double width, double baselineY) {
-    final sorted = List<AssignedBoard>.from(boards)
-      ..sort((a, b) => a.channel.frequency.compareTo(b.channel.frequency));
-
-    for (int i = 0; i < sorted.length - 1; i++) {
-      final f1 = sorted[i].channel.frequency;
-      final f2 = sorted[i + 1].channel.frequency;
-      final diff = f2 - f1;
-
-      final x1 = _freqToX(f1, width);
-      final x2 = _freqToX(f2, width);
-
-      if ((x2 - x1) < 22) continue;
-
-      const lineY = 136.0;
-      final arrowPaint = Paint()
-        ..color = colorScheme.tertiary.withValues(alpha: 0.6)
-        ..strokeWidth = 1.0;
-
-      canvas.drawLine(Offset(x1 + 6, lineY), Offset(x2 - 6, lineY), arrowPaint);
-
-      final span = TextSpan(
-        text: '+$diff',
-        style: textTheme.labelSmall?.copyWith(
-          color: colorScheme.tertiary,
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
-        ),
-      );
-      final tp = TextPainter(text: span, textDirection: TextDirection.ltr)
-        ..layout();
-      tp.paint(canvas, Offset((x1 + x2 - tp.width) / 2, lineY - 10));
     }
   }
 

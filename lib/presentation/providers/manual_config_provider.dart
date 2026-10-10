@@ -60,24 +60,20 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
 
   @override
   ManualConfigState build() {
-    // Початковий стан: 2 стандартні борти (R1 та R4 - чиста пара)
     final initialSlots = [
       ManualDroneSlot(
         id: 1,
         boardNumber: 1,
         boardType: BoardType.standard,
         channel: FpvFrequencies.bandR[0], // R1: 5658
-        isLocked: false,
       ),
       ManualDroneSlot(
         id: 2,
         boardNumber: 2,
         boardType: BoardType.standard,
         channel: FpvFrequencies.bandR[3], // R4: 5769
-        isLocked: false,
       ),
     ];
-
     return ManualConfigState(
       slots: initialSlots,
       conflictReport: _analyzer.analyze(initialSlots),
@@ -264,47 +260,37 @@ class ManualConfigNotifier extends Notifier<ManualConfigState> {
         boardNumber: 1,
         boardType: BoardType.standard,
         channel: FpvFrequencies.bandR[0],
-        isLocked: false,
       ),
       ManualDroneSlot(
         id: _nextId++,
         boardNumber: 2,
         boardType: BoardType.standard,
         channel: FpvFrequencies.bandR[3],
-        isLocked: false,
       ),
     ];
-
     state = ManualConfigState(
       slots: initialSlots,
       conflictReport: _analyzer.analyze(initialSlots),
-      isUserCustomized: false,
     );
   }
 
-  FpvChannel _getDefaultChannelForType(BoardType type) {
-    switch (type) {
-      case BoardType.standard:
-        return FpvFrequencies.bandR[0];
-      case BoardType.lowband:
-        return FpvFrequencies.bandL[0];
-      case BoardType.xBand:
-        return FpvFrequencies.bandX[0];
-    }
-  }
+  FpvChannel _getDefaultChannelForType(BoardType type) => switch (type) {
+    BoardType.standard => FpvFrequencies.bandR[0],
+    BoardType.lowband => FpvFrequencies.bandL[0],
+    BoardType.xBand => FpvFrequencies.bandX[0],
+  };
 
   bool _isChannelCompatibleWithType(FpvChannel? ch, BoardType type) {
     if (ch == null) return false;
-    switch (type) {
-      case BoardType.standard:
-        return ch.category == BandCategory.standard;
-      case BoardType.lowband:
-        return ch.category == BandCategory.lowband ||
-            ch.category == BandCategory.standard;
-      case BoardType.xBand:
-        return ch.category == BandCategory.xBand ||
-            ch.category == BandCategory.standard;
-    }
+    return switch (type) {
+      BoardType.standard => ch.category == BandCategory.standard,
+      BoardType.lowband =>
+        ch.category == BandCategory.lowband ||
+            ch.category == BandCategory.standard,
+      BoardType.xBand =>
+        ch.category == BandCategory.xBand ||
+            ch.category == BandCategory.standard,
+    };
   }
 }
 

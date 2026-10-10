@@ -286,8 +286,7 @@ class MaximinEngine {
 
     if (bestCombo == null || bestScore == null) {
       return BandAllocationResult.failure(
-        'Неможливо підібрати чисту сітку для $count бортів '
-        'із запасом IMD3 ≥ ${minImdFloor.toInt()} МГц та Δf ≥ $minSpacing МГц.',
+        'Неможливо підібрати чисту сітку для $count бортів із запасом IMD3 ≥ ${minImdFloor.toInt()} МГц та Δf ≥ $minSpacing МГц.',
       );
     }
 

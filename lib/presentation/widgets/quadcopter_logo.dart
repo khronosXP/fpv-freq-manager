@@ -85,7 +85,7 @@ class _QuadcopterPainter extends CustomPainter {
 
     // Center camera aperture (hollow circle)
     final camPaint = Paint()
-      ..color = const Color(0x00000000)
+      ..color = color.withValues(alpha: 0)
       ..blendMode = BlendMode.clear;
     canvas.drawCircle(Offset(cx, cy), 4.5 * s, camPaint);
 

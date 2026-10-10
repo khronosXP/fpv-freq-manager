@@ -13,6 +13,8 @@ class FleetCountersSection extends ConsumerWidget {
     final state = ref.watch(fleetProvider);
     final notifier = ref.read(fleetProvider.notifier);
 
+    final isLight = theme.brightness == Brightness.light;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -37,12 +39,15 @@ class FleetCountersSection extends ConsumerWidget {
           margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+            color: isLight
+                ? colorScheme.surface
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: state.useExtendedBands
-                  ? colorScheme.secondary.withValues(alpha: 0.4)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.25),
+                  ? colorScheme.secondary.withValues(alpha: 0.6)
+                  : colorScheme.outlineVariant,
+              width: 1.2,
             ),
           ),
           child: Row(

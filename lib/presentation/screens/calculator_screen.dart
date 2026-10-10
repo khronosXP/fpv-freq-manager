@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/fleet_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/calculator_footer.dart';
 import '../widgets/calculator_header_banner.dart';
 import '../widgets/fleet/fleet_action_bar.dart';
@@ -21,11 +22,28 @@ class CalculatorScreen extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final state = ref.watch(fleetProvider);
     final notifier = ref.read(fleetProvider.notifier);
+    final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         toolbarHeight: 68,
+        actions: [
+          IconButton(
+            tooltip: themeMode == ThemeMode.dark
+                ? 'Світла тема (UI Max Pro)'
+                : 'Темна тема (Телеметрія)',
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            icon: Icon(
+              themeMode == ThemeMode.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+              color: colorScheme.onSurface,
+            ),
+            onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
+          ),
+          const SizedBox(width: 8),
+        ],
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

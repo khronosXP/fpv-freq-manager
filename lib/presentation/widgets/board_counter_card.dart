@@ -107,20 +107,20 @@ class BoardCounterCard extends StatelessWidget {
                     children: [
                       IconButton(
                         onPressed: canDecrement ? onDecrement : null,
-                        icon: const Icon(Icons.remove, size: 18),
-                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.remove, size: 20),
                         style: IconButton.styleFrom(
+                          minimumSize: const Size(44, 44),
                           backgroundColor: canDecrement
                               ? colorScheme.surfaceContainerHighest
                               : colorScheme.surface.withValues(alpha: 0.3),
                           foregroundColor: canDecrement
                               ? colorScheme.onSurface
                               : colorScheme.onSurface.withValues(alpha: 0.2),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                         ),
                       ),
                       Container(
-                        constraints: const BoxConstraints(minWidth: 40),
+                        constraints: const BoxConstraints(minWidth: 44),
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         alignment: Alignment.center,
                         child: Text(
@@ -138,16 +138,16 @@ class BoardCounterCard extends StatelessWidget {
                       ),
                       IconButton(
                         onPressed: canIncrement ? onIncrement : null,
-                        icon: const Icon(Icons.add, size: 18),
-                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.add, size: 20),
                         style: IconButton.styleFrom(
+                          minimumSize: const Size(44, 44),
                           backgroundColor: canIncrement
                               ? effectiveAccent.withValues(alpha: 0.15)
                               : colorScheme.surface.withValues(alpha: 0.3),
                           foregroundColor: canIncrement
                               ? effectiveAccent
                               : colorScheme.onSurface.withValues(alpha: 0.2),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                         ),
                       ),
                     ],

@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/models/assigned_board.dart';
-import '../../core/models/board_type.dart';
+import 'spectrum/rf_selected_board_card.dart';
+import 'spectrum/rf_spectrum_legend.dart';
 import 'spectrum/spectrum_painter.dart';
 
 class RfSpectrumChart extends StatefulWidget {
@@ -41,6 +42,7 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
 
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
 
     final freqs = widget.boards.map((b) => b.channel.frequency).toList();
     final minFreq = freqs.reduce(math.min);
@@ -55,12 +57,13 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
         : null;
 
     return Card(
-      elevation: 0,
+      elevation: isLight ? 1 : 0,
       margin: const EdgeInsets.symmetric(vertical: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+          color: colorScheme.outlineVariant,
+          width: isLight ? 1.2 : 1.0,
         ),
       ),
       child: Padding(
@@ -73,9 +76,12 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
             _buildCanvas(context, colorScheme, theme, chartMin, chartMax),
             const SizedBox(height: 10),
             if (selectedBoard != null)
-              _buildSelectedCard(selectedBoard, colorScheme, theme.textTheme),
+              RfSelectedBoardCard(
+                board: selectedBoard,
+                allBoards: widget.boards,
+              ),
             const SizedBox(height: 8),
-            _buildLegend(colorScheme, theme.textTheme),
+            RfSpectrumLegend(boards: widget.boards),
           ],
         ),
       ),
@@ -114,7 +120,7 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
                 color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
               child: Row(
@@ -232,170 +238,6 @@ class _RfSpectrumChartState extends State<RfSpectrumChart> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSelectedCard(
-    AssignedBoard board,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
-    final sorted = List<AssignedBoard>.from(widget.boards)
-      ..sort((a, b) => a.channel.frequency.compareTo(b.channel.frequency));
-    final idx = sorted.indexWhere((b) => b.boardNumber == board.boardNumber);
-
-    final prevDiff = idx > 0
-        ? board.channel.frequency - sorted[idx - 1].channel.frequency
-        : null;
-    final nextDiff = idx < sorted.length - 1
-        ? sorted[idx + 1].channel.frequency - board.channel.frequency
-        : null;
-
-    final badgeColor = board.boardType == BoardType.standard
-        ? colorScheme.primary
-        : (board.boardType == BoardType.lowband
-              ? colorScheme.secondary
-              : colorScheme.tertiary);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Борт ${board.boardNumber}',
-                  style: textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${board.channel.code} (${board.channel.frequency} МГц)',
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (prevDiff != null)
-                Text(
-                  '← $prevDiff МГц ',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.tertiary,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              if (nextDiff != null)
-                Text(
-                  ' $nextDiff МГц →',
-                  style: textTheme.labelSmall?.copyWith(
-                    color: colorScheme.tertiary,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegend(ColorScheme colorScheme, TextTheme textTheme) {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 6,
-      children: [
-        _legendItem(
-          colorScheme.primary,
-          'Стандарт 5.8G',
-          colorScheme,
-          textTheme,
-        ),
-        if (widget.boards.any((b) => b.boardType == BoardType.lowband))
-          _legendItem(
-            colorScheme.secondary,
-            'Lowband 5.3G',
-            colorScheme,
-            textTheme,
-          ),
-        if (widget.boards.any((b) => b.boardType == BoardType.xBand))
-          _legendItem(
-            colorScheme.tertiary,
-            'X-band 4.9G',
-            colorScheme,
-            textTheme,
-          ),
-        _legendItem(
-          colorScheme.tertiary,
-          '↔ Рознос ≥40МГц',
-          colorScheme,
-          textTheme,
-        ),
-        _legendItem(
-          colorScheme.error.withValues(alpha: 0.7),
-          '┆ Гармоніки IMD3',
-          colorScheme,
-          textTheme,
-          isDashed: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _legendItem(
-    Color color,
-    String label,
-    ColorScheme colorScheme,
-    TextTheme textTheme, {
-    bool isDashed = false,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: isDashed ? Colors.transparent : color,
-            borderRadius: BorderRadius.circular(2),
-            border: Border.all(color: color, width: 1.5),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontSize: 11,
-          ),
-        ),
-      ],
     );
   }
 }
