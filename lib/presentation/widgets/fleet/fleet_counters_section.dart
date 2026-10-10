@@ -37,17 +37,15 @@ class FleetCountersSection extends ConsumerWidget {
         // 2. Блок перемикання розширених діапазонів
         Container(
           margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: isLight
                 ? colorScheme.surface
-                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(14),
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: state.useExtendedBands
-                  ? colorScheme.secondary.withValues(alpha: 0.6)
-                  : colorScheme.outlineVariant,
-              width: 1.2,
+              color: colorScheme.outlineVariant,
+              width: isLight ? 1.2 : 1.0,
             ),
           ),
           child: Row(

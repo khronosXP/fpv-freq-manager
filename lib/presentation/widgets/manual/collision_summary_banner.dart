@@ -29,36 +29,54 @@ class CollisionSummaryBanner extends StatelessWidget {
   }
 
   Widget _buildCleanBanner(ColorScheme colorScheme, ThemeData theme) {
+    final isLight = theme.brightness == Brightness.light;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        color: isLight
+            ? colorScheme.surface
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.tertiary.withValues(alpha: 0.5),
-          width: 1.5,
+          color: colorScheme.outlineVariant,
+          width: isLight ? 1.2 : 1.0,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.8,
-              fontFamily: 'monospace',
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
               color: colorScheme.tertiary,
+              shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • Завад не виявлено',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontFamily: 'monospace',
-              fontSize: 11,
-              color: colorScheme.onSurfaceVariant,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'СІТКА БЕЗПЕЧНА (ЧИСТИЙ ЕФІР)',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    fontFamily: 'monospace',
+                    color: colorScheme.tertiary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Δf ≥ 40 MHz • IMD3 ≥ 12 MHz • Завад не виявлено',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -67,6 +85,7 @@ class CollisionSummaryBanner extends StatelessWidget {
   }
 
   Widget _buildCollisionBanner(ColorScheme colorScheme, ThemeData theme) {
+    final isLight = theme.brightness == Brightness.light;
     final directCount = report.directCollisions.length;
     final imdCount = report.imdCollisions.length;
     final tbCount = report.tripleBeatCollisions.length;
@@ -80,14 +99,16 @@ class CollisionSummaryBanner extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: colorScheme.errorContainer.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(14),
+        color: colorScheme.errorContainer.withValues(
+          alpha: isLight ? 0.35 : 0.2,
+        ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.error.withValues(alpha: 0.6),
-          width: 1.5,
+          color: colorScheme.error.withValues(alpha: 0.7),
+          width: isLight ? 1.2 : 1.0,
         ),
       ),
       child: Column(

@@ -60,10 +60,7 @@ class ManualDroneSlotCard extends StatelessWidget {
       color: cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: borderColor,
-          width: hasConflict || slot.isLocked ? 1.5 : 1.2,
-        ),
+        side: BorderSide(color: borderColor, width: isLight ? 1.2 : 1.0),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -102,6 +99,7 @@ class ManualDroneSlotCard extends StatelessWidget {
     ThemeData theme,
   ) {
     final ch = slot.channel;
+    final isLight = theme.brightness == Brightness.light;
     return InkWell(
       onTap: () {
         ChannelPickerSheet.show(
@@ -122,7 +120,7 @@ class ManualDroneSlotCard extends StatelessWidget {
             color: hasConflict
                 ? colorScheme.error.withValues(alpha: 0.5)
                 : colorScheme.outlineVariant,
-            width: 1.2,
+            width: isLight ? 1.2 : 1.0,
           ),
         ),
         child: Row(

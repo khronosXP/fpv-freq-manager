@@ -30,15 +30,17 @@ class BoardCounterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
     final effectiveAccent = accentColor ?? colorScheme.primary;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 0,
+      elevation: isLight ? 1 : 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+          color: colorScheme.outlineVariant,
+          width: isLight ? 1.2 : 1.0,
         ),
       ),
       child: Padding(

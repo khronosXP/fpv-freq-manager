@@ -8,7 +8,7 @@ final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
-    return ThemeMode.dark;
+    return ThemeMode.light;
   }
 
   void toggleTheme() {

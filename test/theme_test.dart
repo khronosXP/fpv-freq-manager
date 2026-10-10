@@ -35,20 +35,20 @@ void main() {
       expect(dark.colorScheme.onSurface, const Color(0xFFECEFF1));
     });
 
-    test('ThemeModeNotifier defaults to dark and toggles to light', () {
+    test('ThemeModeNotifier defaults to light and toggles to dark', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(themeModeProvider), ThemeMode.dark);
-
-      container.read(themeModeProvider.notifier).toggleTheme();
       expect(container.read(themeModeProvider), ThemeMode.light);
 
       container.read(themeModeProvider.notifier).toggleTheme();
       expect(container.read(themeModeProvider), ThemeMode.dark);
 
-      container.read(themeModeProvider.notifier).setThemeMode(ThemeMode.light);
+      container.read(themeModeProvider.notifier).toggleTheme();
       expect(container.read(themeModeProvider), ThemeMode.light);
+
+      container.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark);
+      expect(container.read(themeModeProvider), ThemeMode.dark);
     });
   });
 
@@ -77,22 +77,22 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // In dark mode initially, should have light_mode icon to switch to light
-      final themeBtnFinder = find.byTooltip('Світла тема (UI Max Pro)');
+      // In light mode initially, should have dark_mode icon to switch to dark
+      final themeBtnFinder = find.byTooltip('Темна тема (Телеметрія)');
       expect(themeBtnFinder, findsOneWidget);
 
       // Tap theme switch
       await tester.tap(themeBtnFinder);
       await tester.pumpAndSettle();
 
-      // Now in light mode, tooltip should update to dark mode switch
-      expect(find.byTooltip('Темна тема (Телеметрія)'), findsOneWidget);
+      // Now in dark mode, tooltip should update to light mode switch
+      expect(find.byTooltip('Світла тема (UI Max Pro)'), findsOneWidget);
 
-      // Tap back to dark
-      await tester.tap(find.byTooltip('Темна тема (Телеметрія)'));
+      // Tap back to light
+      await tester.tap(find.byTooltip('Світла тема (UI Max Pro)'));
       await tester.pumpAndSettle();
 
-      expect(find.byTooltip('Світла тема (UI Max Pro)'), findsOneWidget);
+      expect(find.byTooltip('Темна тема (Телеметрія)'), findsOneWidget);
     });
   });
 }

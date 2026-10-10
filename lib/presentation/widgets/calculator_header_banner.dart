@@ -12,17 +12,15 @@ class CalculatorHeaderBanner extends StatelessWidget {
     final isLight = theme.brightness == Brightness.light;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: isLight
             ? colorScheme.surface
             : colorScheme.surfaceContainerHighest.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isLight
-              ? colorScheme.outlineVariant
-              : colorScheme.primary.withValues(alpha: 0.3),
-          width: 1.2,
+          color: colorScheme.outlineVariant,
+          width: isLight ? 1.2 : 1.0,
         ),
       ),
       child: Row(
