@@ -57,37 +57,26 @@ class _ChannelPickerSheetState extends State<ChannelPickerSheet> {
     }
   }
 
-  List<String> _getAllowedBands() {
-    switch (widget.targetSlot.boardType) {
-      case BoardType.standard:
-        return ['R', 'F', 'A', 'B', 'E'];
-      case BoardType.lowband:
-        return ['L', 'R', 'F', 'A', 'B', 'E'];
-      case BoardType.xBand:
-        return ['X', 'R', 'F', 'A', 'B', 'E'];
-    }
-  }
+  List<String> _getAllowedBands() => switch (widget.targetSlot.boardType) {
+    BoardType.standard => const ['R', 'F', 'A', 'B', 'E'],
+    BoardType.lowband => const ['L'],
+    BoardType.xBand => const ['X'],
+  };
 
-  List<FpvChannel> _getChannelsForBand(String bandName) {
-    switch (bandName) {
-      case 'R':
-        return FpvFrequencies.bandR;
-      case 'F':
-        return FpvFrequencies.bandF;
-      case 'A':
-        return FpvFrequencies.bandA;
-      case 'B':
-        return FpvFrequencies.bandB;
-      case 'E':
-        return FpvFrequencies.bandE;
-      case 'L':
-        return FpvFrequencies.bandL;
-      case 'X':
-        return FpvFrequencies.bandX;
-      default:
-        return FpvFrequencies.bandR;
-    }
-  }
+  List<FpvChannel> _getChannelsForBand(String bandName) => switch (bandName) {
+    'R' => FpvFrequencies.bandR,
+    'F' => FpvFrequencies.bandF,
+    'A' => FpvFrequencies.bandA,
+    'B' => FpvFrequencies.bandB,
+    'E' => FpvFrequencies.bandE,
+    'L' => FpvFrequencies.bandL,
+    'X' => FpvFrequencies.bandX,
+    _ => switch (widget.targetSlot.boardType) {
+      BoardType.lowband => FpvFrequencies.bandL,
+      BoardType.xBand => FpvFrequencies.bandX,
+      BoardType.standard => FpvFrequencies.bandR,
+    },
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +118,7 @@ class _ChannelPickerSheetState extends State<ChannelPickerSheet> {
                   Icon(Icons.tune, color: colorScheme.primary, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Вибір каналу: Борт ${widget.targetSlot.boardNumber}',
+                    'Вибір каналу: Борт ${widget.targetSlot.boardNumber} (${widget.targetSlot.boardType.displayName})',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colorScheme.onSurface,
@@ -143,27 +132,34 @@ class _ChannelPickerSheetState extends State<ChannelPickerSheet> {
                 ],
               ),
             ),
-            // Band tabs
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
-                children: allowedBands.map((band) {
-                  final isSelected = band == _selectedBandName;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('Band $band'),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) setState(() => _selectedBandName = band);
-                      },
-                    ),
-                  );
-                }).toList(),
+            // Band tabs for standard 5.8 GHz
+            if (allowedBands.length > 1) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                child: Row(
+                  children: allowedBands.map((band) {
+                    final isSelected = band == _selectedBandName;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('Band $band'),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => _selectedBandName = band);
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
-            const Divider(height: 1),
+              const Divider(height: 1),
+            ],
             // Channel List
             Expanded(
               child: ListView.separated(
