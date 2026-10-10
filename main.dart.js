@@ -74672,7 +74672,7 @@ gpj(){var s=this.a
 return new A.a_(s,new A.XE(),A.O(s).h("a_<1>")).gF(0)},
 gtc(){var s=this,r=s.gnb()
 return r+(s.b?s.goA()+s.gpj():0)},
-gOM(){return this.gnb()<6&&this.gtc()<12},
+gOM(){return this.gnb()<5&&this.gtc()<12},
 gOL(){return this.b&&this.goA()<4&&this.gtc()<12},
 gON(){return this.b&&this.gpj()<3&&this.gtc()<12},
 gvn(){var s,r,q,p,o=A.c([],t.es)
@@ -74848,7 +74848,7 @@ kR(a,a0){var s,r,q,p,o,n,m,l,k,j,i,h,g=null,f=A.J(a),e=f.ax,d=$.SW(),c=a0.pg(d,t
 d=c.gnb()
 s=c.gOM()
 r=c.gnb()
-q=c.gnb()>=6?"\u041b\u0456\u043c\u0456\u0442 5.8 GHz: \u043c\u0430\u043a\u0441. 6 \u0431\u0435\u0437 \u0437\u0430\u0432\u0430\u0434":g
+q=c.gnb()>=5?"\u041b\u0456\u043c\u0456\u0442 5.8 GHz: \u043c\u0430\u043a\u0441. 5 \u0431\u0435\u0437 \u0437\u0430\u0432\u0430\u0434":g
 p=e.b
 q=A.al3(p,r>1,s,d,q,!0,b.gac5(),b.gaeL(),"5.8 GHz \u2022 5645\u20135945 MHz","\u0421\u0442\u0430\u043d\u0434\u0430\u0440\u0442\u043d\u0456 \u0431\u043e\u0440\u0442\u0438 (A, B, E, F, R)")
 if(e.a===B.a_)d=e.k2
